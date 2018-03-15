@@ -36,24 +36,58 @@ def observe_and_take_random_action(obs):
 
   # Line 1: Move to x, y
   # Line 2 & 3: Click at (x, y)
+  # TODO: make actions modular with respect to the task required
+  #       consider using the env name to decide which class of
+  #       set of actions would make the most sense for the context
   action = [universe.spaces.PointerEvent(xcoord, ycoord, 0),
             universe.spaces.PointerEvent(xcoord, ycoord, 1),
             universe.spaces.PointerEvent(xcoord, ycoord, 0)]
+  print("action: ",action)
   
   #return list of vnc events
   return action
 
-def use_keral_rl(env, action_shape):
+def get_env_space(env):
+  observation = env.reset()
+  done = False
+
+  while not done:
+    #agent takes an action for each observation
+    action_n = [observe_and_take_random_action(obs) for obs in observation]
+    observation, reward_n, done_n, info = env.step(action_n)
+    
+    #print("%%%%%\nInfo:", info['n'][0])
+    env_id = info['n'][0]['env_status.episode_id']
+
+    if env_id != None and int(env_id) > 2:
+      print("Observation space intialized and returning shape as input to model")
+      print("\nObservation: ",observation)
+      done = True
+
+  x = observation[0]['vision']
+  #crop observation window to fit mwob window
+  crop = np.array(x[75:75+210, 10:10+160, :])
+
+  #TODO: decide action space from env name
+  action = np.array([[0,0,0],[0,0,1],[0,0,0]])
+
+  return crop.shape, action.shape
+
+def use_keral_rl(env, action_shape, observation_space):
   print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
   #print(env.action_space.keys)# get all possible key events
   #print(env.action_space.buttonmasks)# get "buttonmasks"???
   # checkout universe/universe/spaces/vnc_action_space.py
   # ^^^This repo provides more information about key events
-  nb_actions = action_shape#TODO: get actual shape of action_space
+  nb_actions = 1
+  for dim in action_shape:
+    nb_actions *= dim
+  print("Lengtyh of unwrapped action space:", nb_actions)
+  print('}{}{}}{}{}{}{}{}{}{}{}{}{}{')
 
   # Next, we build a very simple model.
   model = Sequential()
-  model.add(Flatten(input_shape=(1,) + env.observation_space.shape))#TODO: get observation_space
+  model.add(Flatten(input_shape=observation_space))
   model.add(Dense(16))
   model.add(Activation('relu'))
   model.add(Dense(16))
@@ -74,7 +108,7 @@ def use_keral_rl(env, action_shape):
 
   # Okay, now it's time to learn something! We visualize the training here for show, but this
   # slows down training. You can always safely abort the training prematurely using Ctr + C
-  # TODO: examine keras-rl/examples in order to crop obervation space during input to DQN
+  # TODO: fix passing Universe env variable into DQNAgent which expects Gym env variables
   dqn.fit(env, nb_steps=50000, visualize=True, verbose=2)
 
   # After training is done, we save the final weights.
@@ -84,22 +118,78 @@ def use_keral_rl(env, action_shape):
   dqn.test(env, nb_episodes=5, visualize=True)
 
 
-def random_game_loop():
+def random_game_loop(env):
+  observation = env.reset()
+
   while True:
     #agent takes an action for each observation
-    action_n = [observe_and_take_random_action(obs) for obs in observation_n]
-    observation_n, reward_n, done_n, info = env.step(action_n)
+    action_n = [observe_and_take_random_action(obs) for obs in observation]
+    observation, reward_n, done_n, info = env.step(action_n)
+    print('####\nReward:', reward_n,'\n')
+    print("####\nInfo:", info, '\n')
     env.render()
   
+if __name__ == "__main__":
+  #initialize game environment
+  env = gym.make('wob.mini.ClickButton-v0')
 
-
-#initialize game environment
-env = gym.make('wob.mini.ClickButton-v0')
-
-# automatically creates a local docker container
-env.configure(remotes=1, fps=5, vnc_driver='go',
+  # automatically creates a local docker container
+  env.configure(remotes=1, fps=5, vnc_driver='go',
               vnc_kwargs={'encoding':'tight', 'compress_level': 0,
                           'fine_quality_level': 100, 'subsample_level': 0})
-observation_n = env.reset()
 
-use_keral_rl(env, 12)
+  #random_game_loop(env)
+  obs_space, act_space = get_env_space(env)
+  print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
+  print("%%%%%\nThe action space is:",act_space,"\n%%%%%")
+
+  use_keral_rl(env, act_space, obs_space)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
