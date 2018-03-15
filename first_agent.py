@@ -73,8 +73,8 @@ def use_keral_rl(env, action_shape):
   dqn.compile(Adam(lr=1e-3), metrics=['mae'])
 
   # Okay, now it's time to learn something! We visualize the training here for show, but this
-  # slows down training quite a lot. You can always safely abort the training prematurely using
-  # Ctrl + C.
+  # slows down training. You can always safely abort the training prematurely using Ctr + C
+  # TODO: examine keras-rl/examples in order to crop obervation space during input to DQN
   dqn.fit(env, nb_steps=50000, visualize=True, verbose=2)
 
   # After training is done, we save the final weights.
