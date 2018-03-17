@@ -4,7 +4,8 @@ import numpy as np
 
 from keras.optimizers import Adam
 from keras.models import Sequential
-from keras.layers import Dense, Activation, Flatten
+from keras.layers import Dense, Activation 
+from keras.layers import Flatten, Conv2D
 
 from rl.policy import BoltzmannQPolicy
 from rl.memory import SequentialMemory
@@ -82,13 +83,15 @@ def use_keral_rl(env, action_shape, observation_space):
   nb_actions = 1
   for dim in action_shape:
     nb_actions *= dim
-  print("Lengtyh of unwrapped action space:", nb_actions)
+  print("Length of unwrapped action space:", nb_actions)
   print('}{}{}}{}{}{}{}{}{}{}{}{}{}{')
 
   # Next, we build a very simple model.
   model = Sequential()
-  model.add(Flatten(input_shape=observation_space))
+  model.add(Conv2D(32, (3, 3), input_shape=observation_space ))
   model.add(Dense(16))
+  model.add(Flatten())
+
   model.add(Activation('relu'))
   model.add(Dense(16))
   model.add(Activation('relu'))
