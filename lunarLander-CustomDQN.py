@@ -17,7 +17,7 @@ goal_steps = 90#2000
 score_requirement = -150#TODO: determine good value
 initial_games = 100#10000
 
-action_space = 4
+action_space = 3
 
 def create_random_samples(init_obs):
     # [state, action, reward, state_new, done]
@@ -37,6 +37,7 @@ def create_random_samples(init_obs):
 
         for _ in range(goal_steps):
             action = random.randrange(0, action_space)
+            #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
                 
             game_memory.append([state, action, reward, state_new, done])
@@ -129,8 +130,10 @@ if __name__ == "__main__":
         state = env.reset()
 
         for episode in range(goal_steps):
-            action = np.zeros(action_space)
-            action[Agent.get_action(state)] = 1
+            env.render()
+            action = Agent.get_action(state)
+            #print("ACTION::::", action)
+            
             
             state_new, reward, done, info = env.step(action)
                 
@@ -163,8 +166,7 @@ if __name__ == "__main__":
         scores.append(score)
 
     print('Average Score:',sum(scores)/len(scores))
-    print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),
-                                        choices.count(0)/len(choices)))
+    #print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
     print(score_requirement)
 
 
