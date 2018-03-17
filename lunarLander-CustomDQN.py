@@ -126,7 +126,22 @@ if __name__ == "__main__":
         score = 0
         game_memory = []
         prev_obs = []
-        env.reset()
+        state = env.reset()
+
+        for episode in range(goal_steps):
+            action = np.zeros(action_space)
+            action[Agent.get_action(state)] = 1
+            
+            state_new, reward, done, info = env.step(action)
+                
+            Agent.store_transition(state, action, reward, state_new, done)
+            
+            scores.append(reward)
+            state = state_new
+            
+            if done: break
+        
+        '''
         for _ in range(goal_steps):
             env.render()
 
@@ -143,6 +158,7 @@ if __name__ == "__main__":
             game_memory.append([new_observation, action])
             score+=reward
             if done: break
+        '''
 
         scores.append(score)
 

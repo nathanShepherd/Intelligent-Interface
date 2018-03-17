@@ -86,10 +86,11 @@ class DQN:
             return self._take_random_action()
         else:
             #add another dimension to state (i.e. batch size is one)
+            #state = np.array(state)
             state = np.expand_dims(state, axis=0)
             state = np.stack((state,), axis=1)
-            #state = np.array(state)
-            print(state.shape)
+            print("State shape:",state.shape)
+            print("Predicting action from state")
             return np.argmax(self.model.predict(state))
 
     def siraj_train(self):
@@ -100,6 +101,7 @@ class DQN:
         targets = np.zeros((self.batch_size, self.action_space))
 
         for i in range(len(transitions)):
+            print("Making target: {} of {}".format(i, len(transitions)))
             trans = transitions[i]
             state = trans[0];
             action = trans[1];
@@ -107,15 +109,21 @@ class DQN:
             state_new = trans[3]
             done = trans[4]
 
-            inputs[i] = state
             targets[i] = self.get_action(state)
+            #TODO: Consult siraj's code and determine correct shape of action!
+            print("Target {}: {}".format(i, targets[i]))
             Q_sa = self.get_action(state_new)
+
+            #add another dimension to state (i.e. batch size is one)
+            
+            inputs[i] = state
 
             if done:
                 targets[i, action] = reward
             else:
                 targets[i, action] = reward + self.gamma * np.max(Q_sa)
-
+        inputs = np.expand_dims(inputs, axis=1)
+        #inputs = np.stack((inputs,), axis=1)
         #train network to output Q function
         self.model.train_on_batch(inputs, targets)
         
