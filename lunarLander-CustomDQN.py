@@ -11,14 +11,6 @@ from collections import Counter
 
 from CustomDQN import DQN
 
-LR = 1e-2
-env = gym.make("LunarLander-v2")
-goal_steps = 90#2000
-score_requirement = -150#TODO: determine good value
-initial_games = 100#10000
-
-action_space = 3
-
 def create_random_samples(init_obs):
     # [state, action, reward, state_new, done]
     training_data = []
@@ -37,6 +29,8 @@ def create_random_samples(init_obs):
 
         for _ in range(goal_steps):
             action = random.randrange(0, action_space)
+            if action == action_space:
+                print("FOUND")
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
                 
@@ -51,13 +45,6 @@ def create_random_samples(init_obs):
             
             for data in game_memory:
                 training_data.append(data)
-                '''
-                action_vect = np.zeros(action_space)
-                # convert to one-hot (this is the output layer for our neural network)
-                action_vect[data[1]] = 1
-                # [state, action, reward, state_new, done]
-                training_data.append([(action_vect if i == 1 else elem) for i, elem in enumerate(data)])
-                '''
                 
         init_obs = env.reset()
         scores.append(score)
@@ -71,46 +58,21 @@ def create_random_samples(init_obs):
     
     return np.array(training_data)
 
-def neural_network_model(input_size):
+#~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
-    network = input_data(shape=[None, input_size, 1], name='input')
+LR = 1e-2
+env = gym.make("LunarLander-v2")
+goal_steps = 1000#2000
+score_requirement = -150#TODO: determine good value
+initial_games = 500#10000
 
-    network = fully_connected(network, 128, activation='relu')
-    network = dropout(network, 0.9)
-
-    network = fully_connected(network, 256, activation='relu')
-    network = dropout(network, 0.9)
-
-    network = fully_connected(network, 512, activation='relu')
-    network = dropout(network, 0.9)
-
-    network = fully_connected(network, 256, activation='relu')
-    network = dropout(network, 0.9)
-
-    network = fully_connected(network, 128, activation='relu')
-    network = dropout(network, 0.9)
-
-    network = fully_connected(network, action_dims, activation='softmax')
-    network = regression(network, optimizer='adam', learning_rate=LR,
-                         loss='categorical_crossentropy', name='targets')
-    model = tflearn.DNN(network, tensorboard_dir='log')
-
-    return model
-
-def train_model(training_data, model=False):
-
-    X = np.array([i[0] for i in training_data]).reshape(-1,len(training_data[0][0]),1)
-    y = [i[1] for i in training_data]
-
-    if not model:
-        model = neural_network_model(input_size = len(X[0]))
-    
-    model.fit({'input': X}, {'targets': y}, n_epoch=3,
-              snapshot_step=500, show_metric=True, run_id='openai_learning')
-    return model
+num_training_games = 1000
+action_space = 4
 
 if __name__ == "__main__":
-    Agent = DQN()
+    Agent = DQN(batch_size=250,#64
+                memory_size=50000,
+                learning_rate=0.005)
     
     training_data = create_random_samples(env.reset())
     for datum in training_data:
@@ -118,85 +80,68 @@ if __name__ == "__main__":
         Agent.store_transition(s, a, r, s_, done)
 
     Agent.init_model(training_data[0][0].shape, action_space)
-    Agent.siraj_train()
-    #model = train_model(training_data)
+    Agent.train()
 
+    score_length = 1000
     scores = []
-    choices = []
-    for each_game in range(10):
-        score = 0
-        game_memory = []
-        prev_obs = []
+    for each_game in range(num_training_games):
+        #sample state from env
+        #State shape: (1, 1, 8)
         state = env.reset()
 
+        total_reward = 0
         for episode in range(goal_steps):
-            env.render()
+            #env.render()
+
+            #ACTION:::: 3
             action = Agent.get_action(state)
             #print("ACTION::::", action)
             
             
             state_new, reward, done, info = env.step(action)
+
                 
             Agent.store_transition(state, action, reward, state_new, done)
-            
-            scores.append(reward)
+
+            total_reward += reward
             state = state_new
-            
             if done: break
         
-        '''
-        for _ in range(goal_steps):
+        scores.append(total_reward)
+
+        if each_game % 10 == 0:
+            if len(scores) > 1000:
+                scores = scores[-1000:]
+            print("Percent done:", each_game*100/num_training_games,
+                  "mean:",mean(scores), "last 10 reward:", mean(scores[-10:]))
+        Agent.train()
+
+    # Observe Agent after training
+    for each_game in range(10):
+        state = env.reset()
+        for episode in range(goal_steps):
             env.render()
-
-            if len(prev_obs)==0:
-                action = random.randrange(0,action_dims)
-            else:
-                action = np.argmax(model.predict(prev_obs.reshape(-1,len(prev_obs),1))[0])
-
-            choices.append(action)
-                
-            new_observation, reward, done, info = env.step(action)
-        
-            prev_obs = new_observation
-            game_memory.append([new_observation, action])
-            score+=reward
+            action = Agent.get_action(state)
+            state_new, reward, done, info = env.step(action)
+            Agent.store_transition(state, action, reward, state_new, done)      
+            state = state_new
             if done: break
-        '''
 
-        scores.append(score)
-
-    print('Average Score:',sum(scores)/len(scores))
-    #print('choice 1:{}  choice 0:{}'.format(choices.count(1)/len(choices),choices.count(0)/len(choices)))
-    print(score_requirement)
+    Agent.display_statisics_to_console()
+    print("Score Requirement:",score_requirement)
 
 
-'''
-def some_random_games_first():
-    # Each of these is its own game.
-    for episode in range(5):
-        env.reset()
-        print("\nactions: ")
-        # this is each frame, up to 200...but we wont make it that far.
-        for t in range(200):
-            # This will display the environment
-            # Only display if you really want to see it.
-            # Takes much longer to display it.
-            env.render()
 
-            # This will just create a sample action in any environment.
-            # In this environment, the action can be 0 or 1, which is left or right
-            action = env.action_space.sample()
-            print(action, end="")
-            
-            # this executes the environment with an action,
-            # and returns the observation of the environment,
-            # the reward, if the env is over, and other info.
-            observation, reward, done, info = env.step(action)
-           
-            
-            if done:
-                break
 
-create_random_samples()
-#some_random_games_first()
-'''
+
+
+
+
+
+
+
+
+
+
+
+
