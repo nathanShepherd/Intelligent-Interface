@@ -3,7 +3,7 @@
 import gym
 import random
 import numpy as np
-import tflearn
+
 from tflearn.layers.core import input_data, dropout, fully_connected
 from tflearn.layers.estimator import regression
 from statistics import median, mean
@@ -54,27 +54,31 @@ def create_random_samples(init_obs):
     
     print('Average accepted score:',mean(accepted_scores))
     print('Median score for accepted scores:',median(accepted_scores))
-    print(Counter(accepted_scores))
+    print("Number of acccepted scores:", len(accepted_scores))
     
     return np.array(training_data)
 
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
-LR = 1e-2
 env = gym.make("LunarLander-v2")
 goal_steps = 1000#2000
-score_requirement = -150#TODO: determine good value
-initial_games = 500#10000
+score_requirement = -200#-150
+initial_games = 250#10000, 250 adequite
 
-num_training_games = 1000
+num_training_games = 500#>1000
 action_space = 4
 
 if __name__ == "__main__":
-    Agent = DQN(batch_size=250,#64
+    Agent = DQN(batch_size=100,#64
                 memory_size=50000,
-                learning_rate=0.005)
+                learning_rate=0.05,
+
+                epsilon_max=0.9,
+                random_action_decay=100,
+                random_action_chance=0.2)
     
     training_data = create_random_samples(env.reset())
+    print("Storing random games data")
     for datum in training_data:
         s, a, r, s_, done = datum
         Agent.store_transition(s, a, r, s_, done)
@@ -96,11 +100,9 @@ if __name__ == "__main__":
             #ACTION:::: 3
             action = Agent.get_action(state)
             #print("ACTION::::", action)
-            
-            
+                  
             state_new, reward, done, info = env.step(action)
 
-                
             Agent.store_transition(state, action, reward, state_new, done)
 
             total_reward += reward
@@ -109,11 +111,12 @@ if __name__ == "__main__":
         
         scores.append(total_reward)
 
-        if each_game % 10 == 0:
+        if each_game % 50 == 0:
             if len(scores) > 1000:
                 scores = scores[-1000:]
-            print("Percent done:", each_game*100/num_training_games,
-                  "mean:",mean(scores), "last 10 reward:", mean(scores[-10:]))
+            print("Epochs: {} | {}".format(each_game, num_training_games),
+                  "Percent done:", each_game*100/num_training_games,
+                  "mean:",int(mean(scores)), "last 10 reward:", int(mean(scores[-10:])))
         Agent.train()
 
     # Observe Agent after training
@@ -121,12 +124,13 @@ if __name__ == "__main__":
         state = env.reset()
         for episode in range(goal_steps):
             env.render()
-            action = Agent.get_action(state)
+            action = Agent.use_policy(state)
             state_new, reward, done, info = env.step(action)
-            Agent.store_transition(state, action, reward, state_new, done)      
+            #Agent.store_transition(state, action, reward, state_new, done)      
             state = state_new
             if done: break
 
+    Agent.save_model("saved_models/LunarLander/")
     Agent.display_statisics_to_console()
     print("Score Requirement:",score_requirement)
 
