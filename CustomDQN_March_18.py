@@ -1,8 +1,13 @@
 import gym
 #import universe
 
+#for saving models with date information
+import datetime
+
 import random
 import numpy as np
+
+import matplotlib.pyplot as Plot
 
 from keras.optimizers import Adam
 from keras.models import Sequential
@@ -28,6 +33,12 @@ class Memory:
 
     def get_capacity(self):
         return self.capacity
+    
+    def graph(self, num_scores=1000):
+        data = self.avg_scores[-1::][:num_scores]
+        print("Displaying last {} scores".format(num_scores))
+        Plot([datum[2] for datum in data])
+        Plot.show()
         
     
 class DQN:
@@ -35,30 +46,28 @@ class DQN:
             self,
             action_space=None,
             observation_space=None,
-            learning_rate=0.005,
-            reward_decay=0.9,
-            random_action_chance=0.9,
-            #replace_target_iter=500,
+
             memory_size=10000,
-            batch_size=32,
-            e_greedy_increment=None,
+
+            reward_decay=0.9,
+            learning_rate=0.005,
+            random_action_chance=0.9,
+
             hidden=None,
-            output_graph=False,
+            batch_size=32,
     ):
         self.action_space = action_space
         self.observation_space = observation_space
-        self.LR = learning_rate
-        self.reward_decay = 0.9
-        self.epsilon = random_action_chance
-        #self.replace_target_iter = replace_target_iter
+
         self.memory_size = memory_size
-        self.batch_size = batch_size
-        self.epsilon_increment = e_greedy_increment
+
+        self.gamma = reward_decay
+        self.LR = learning_rate
+        self.epsilon = random_action_chance
 
         self.hidden = None
-        self.output_graph = None
+        self.batch_size = batch_size
 
-        self.gamma = 0.9
         self.memory = Memory(memory_size)
 
     def init_model(self, observation_space, nb_actions):#TODO: parameterize
@@ -77,7 +86,9 @@ class DQN:
         model.add(Dense(nb_actions))
         model.add(Activation('linear'))
 
-        model.compile(loss='mse', optimizer='adam',
+        adam = Adam(lr=self.LR)
+
+        model.compile(loss='mse', optimizer=adam,
                       metrics=['accuracy'])
         print(model.summary())
 
@@ -88,6 +99,14 @@ class DQN:
     
     def store_transition(self, state, action, reward, state_next, done):
         self.memory.push_sample(state, action, reward, state_next, done)
+
+    '''less likely to randomly take action relative to get_action (improved stability)'''
+    def use_policy(self, state):
+        state = np.expand_dims(state, axis=0)
+        state = np.stack((state,), axis=1)
+
+        pred = self.model.predict(state)
+        return np.argmax(pred)
 
     def get_action(self, state):
         # decrement epsilon via: e = e_min + (e_max - e_min)^(lambda*time)
@@ -166,7 +185,17 @@ class DQN:
         for i in range(self.action_space):
             print("-->", actions.count(i)/length)
 
-        
+    def graph_scores(self, num_scores=1000):
+        self.memory.graph(num_scores)
+
+    def save_model(self, location):
+        #use keras save model
+        _id = str(sum(self.memory.get_scores())/self.memory.get_capacity())[:10]
+        now = datetime.datetime.now().strftime("%b-%d_avg_score~")
+        self.model.save(location + now + _id + '.h5')
+
+    def load_model(self, name):
+        self.model = load_model(name)
         
 
         

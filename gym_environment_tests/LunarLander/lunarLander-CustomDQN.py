@@ -4,12 +4,12 @@ import gym
 import random
 import numpy as np
 
-from tflearn.layers.core import input_data, dropout, fully_connected
-from tflearn.layers.estimator import regression
 from statistics import median, mean
 from collections import Counter
 
-from CustomDQN_PrioritizedReplay import DQN
+import sys
+sys.path.append('./../../')
+from CustomDQN_March_18 import DQN
 
 def create_random_samples(init_obs):
     # [state, action, reward, state_new, done]
@@ -63,19 +63,19 @@ def create_random_samples(init_obs):
 env = gym.make("LunarLander-v2")
 goal_steps = 1000#2000
 score_requirement = -200#-150
-initial_games = 250#10000, 250 adequite
+initial_games = 50#10000, 250 adequite
 
-num_training_games = 10000#>1000
+num_training_games = 100#>1000
 action_space = 4
 
 if __name__ == "__main__":
     Agent = DQN(batch_size=100,#64
                 memory_size=50000,
-                learning_rate=0.005,
-
-                epsilon_max=0.9,
-                random_action_decay=1000,
-                random_action_chance=0.2)
+                learning_rate=0.0005,
+                )
+                #epsilon_max=0.9,
+                #random_action_decay=1000,
+                #random_action_chance=0.2)
     
     training_data = create_random_samples(env.reset())
     print("Storing random games data")
@@ -103,6 +103,7 @@ if __name__ == "__main__":
                   
             state_new, reward, done, info = env.step(action)
 
+            #TODO: Continously discount reward
             Agent.store_transition(state, action, reward, state_new, done)
 
             total_reward += reward
@@ -120,7 +121,7 @@ if __name__ == "__main__":
         Agent.train()
 
     # Observe Agent after training
-    for each_game in range(10):
+    for each_game in range(5):
         state = env.reset()
         for episode in range(goal_steps):
             env.render()
@@ -130,7 +131,7 @@ if __name__ == "__main__":
             state = state_new
             if done: break
 
-    Agent.save_model("saved_models/LunarLander/")
+    Agent.save_model("./../../saved_models/LunarLander/")
     Agent.display_statisics_to_console()
     print("Score Requirement:",score_requirement)
 

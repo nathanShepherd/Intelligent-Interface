@@ -1,16 +1,15 @@
+ ###########################################################
+#   Mini Web of Bits Virtual Agent using Q-Leaning Policy   #
+#                                                           #
+#              Developed by Nathan Shepherd                 #
+#                                                           #
+ ###########################################################
+# Source Code: https://github.com/nathanShepherd/Intelligent-Interface
+
+
 import gym
 import universe
 import numpy as np
-
-from keras.optimizers import Adam
-from keras.models import Sequential
-from keras.layers import Dense, Activation 
-from keras.layers import Flatten, Conv2D
-
-from rl.policy import BoltzmannQPolicy
-from rl.memory import SequentialMemory
-from rl.agents.dqn import DQNAgent
-
 
 def observe_and_take_random_action(obs):
   # obs is raw (768,1024,3) uint8 screen .
@@ -74,7 +73,7 @@ def get_env_space(env):
 
   return crop.shape, action.shape
 
-def use_keral_rl(env, action_shape, observation_space):
+def get_CustomDQN_Agent(env, action_shape, observation_space):
   print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
   #print(env.action_space.keys)# get all possible key events
   #print(env.action_space.buttonmasks)# get "buttonmasks"???
@@ -86,39 +85,6 @@ def use_keral_rl(env, action_shape, observation_space):
   print("Length of unwrapped action space:", nb_actions)
   print('}{}{}}{}{}{}{}{}{}{}{}{}{}{')
 
-  # Next, we build a very simple model.
-  model = Sequential()
-  model.add(Conv2D(32, (3, 3), input_shape=observation_space ))
-  model.add(Dense(16))
-  model.add(Flatten())
-
-  model.add(Activation('relu'))
-  model.add(Dense(16))
-  model.add(Activation('relu'))
-  model.add(Dense(16))
-  model.add(Activation('relu'))
-  model.add(Dense(nb_actions))
-  model.add(Activation('linear'))
-  print(model.summary())
-
-  # Finally, we configure and compile our agent. You can use every built-in Keras optimizer and
-  # even the metrics!
-  memory = SequentialMemory(limit=50000, window_length=1)
-  policy = BoltzmannQPolicy()
-  dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
-               target_model_update=1e-2, policy=policy)
-  dqn.compile(Adam(lr=1e-3), metrics=['mae'])
-
-  # Okay, now it's time to learn something! We visualize the training here for show, but this
-  # slows down training. You can always safely abort the training prematurely using Ctr + C
-  # TODO: fix passing Universe env variable into DQNAgent which expects Gym env variables
-  dqn.fit(env, nb_steps=50000, visualize=True, verbose=2)
-
-  # After training is done, we save the final weights.
-  dqn.save_weights('dqn_{}_weights.h5f'.format(ENV_NAME), overwrite=True)
-
-  # Finally, evaluate our algorithm for 5 episodes.
-  dqn.test(env, nb_episodes=5, visualize=True)
 
 
 def random_game_loop(env):
@@ -143,7 +109,6 @@ if __name__ == "__main__":
 
   #random_game_loop(env)
   obs_space, act_space = get_env_space(env)
-
   
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is:",act_space,"\n%%%%%")

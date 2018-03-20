@@ -1,3 +1,9 @@
+# Prints all the names of each game in the Click MWOB index
+# --> Delimited by newline character for ease of entering into spreadsheets
+#~~~~~~~~~~~~~~
+#Developed by Nathan Shepherd
+# ::: Full text extracted from: http://alpha.openai.com/miniwob/preview/index.html
+
 orig = '''
 bisect-angle: Find the line that bisects an angle evenly in two.
 chase-circle: Keep your mouse inside a moving circle.
