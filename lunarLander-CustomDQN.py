@@ -9,7 +9,7 @@ from tflearn.layers.estimator import regression
 from statistics import median, mean
 from collections import Counter
 
-from CustomDQN import DQN
+from CustomDQN_PrioritizedReplay import DQN
 
 def create_random_samples(init_obs):
     # [state, action, reward, state_new, done]
@@ -65,16 +65,16 @@ goal_steps = 1000#2000
 score_requirement = -200#-150
 initial_games = 250#10000, 250 adequite
 
-num_training_games = 500#>1000
+num_training_games = 10000#>1000
 action_space = 4
 
 if __name__ == "__main__":
     Agent = DQN(batch_size=100,#64
                 memory_size=50000,
-                learning_rate=0.05,
+                learning_rate=0.005,
 
                 epsilon_max=0.9,
-                random_action_decay=100,
+                random_action_decay=1000,
                 random_action_chance=0.2)
     
     training_data = create_random_samples(env.reset())

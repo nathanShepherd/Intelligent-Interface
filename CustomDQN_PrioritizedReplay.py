@@ -13,7 +13,7 @@ from keras.layers import Dense, Activation, Flatten
 
 
 class Memory:
-    def __init__(self, capacity, omega=.5):
+    def __init__(self, capacity, omega=.1):
         self.capacity = capacity
         self.avg_scores = []
         self.container = []
@@ -24,7 +24,6 @@ class Memory:
         mean = np.mean(self.get_scores())
 
         self.avg_scores.append(mean)
-        '''
         if len(self.avg_scores) > self.capacity:
             del self.avg_scores[0]
         
@@ -32,8 +31,8 @@ class Memory:
                 self.container.insert(random.randint(0, int(0.5 * len(self.container))),
                                       [state, action, reward, state_next, done])        
         else:#reward is greatest element in container so append experience at the end
-        '''
-        self.container.append([state, action, reward, state_next, done])
+
+            self.container.append([state, action, reward, state_next, done])
 
         if len(self.container) > self.capacity:
             #remove random element from container
@@ -41,13 +40,11 @@ class Memory:
             
     '''prioritize better scores for experience replay'''
     def get_sample(self, size):
-        '''
         #Memory is sorted by score from least to greatest
-        
         if random.random() < self.omega:
             #get first third of least scores
             return random.sample(self.container[:int(len(self.container)/3)], size)
-        '''
+
         
         return random.sample(self.container, size)
 
