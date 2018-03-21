@@ -36,14 +36,8 @@ def observe_and_take_random_action(obs):
   xcoord = np.random.randint(0, 160) + 10# add intelligence
   ycoord = np.random.randint(0, 160) + 75 + 50# add intelligence
 
-  # Line 1: Move to x, y
-  # Line 2 & 3: Click at (x, y)
-  # TODO: make actions modular with respect to the task required
-  #       consider using the env name to decide which class of
-  #       set of actions would make the most sense for the context
-  action = [universe.spaces.PointerEvent(xcoord, ycoord, 0),
-            universe.spaces.PointerEvent(xcoord, ycoord, 1),
-            universe.spaces.PointerEvent(xcoord, ycoord, 0)]
+  click = 1
+  action = coord_to_event(xcoord, ycoord, click)
   print("action: ",action)
   
   #return list of vnc events
@@ -94,8 +88,7 @@ def create_random_samples(init_obs, env):
         for _ in range(goal_steps):
             #TODO: Take actions across continuous 2D plane
             action = random.randrange(0, action_space)
-            if action == action_space:
-                print("FOUND")
+            action = action
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
                 
@@ -136,14 +129,14 @@ def get_CustomDQN_Agent(env, action_shape, observation_space):
   print('}{}{}}{}{}{}{}{}{}{}{}{}{}{')
 
 '''Take in coordinates on the screen, return action as a list of VNC events'''
-def coord_to_event(xcoord, ycoord):
+def coord_to_event(xcoord, ycoord, click):
   # Line 1: Move to x, y
   # Line 2 & 3: Click at (x, y)
   # TODO: make actions modular with respect to the task required
   #       consider using the env name to decide which class of
   #       set of actions would make the most sense for the context
   action = [universe.spaces.PointerEvent(xcoord, ycoord, 0),
-            universe.spaces.PointerEvent(xcoord, ycoord, 1),
+            universe.spaces.PointerEvent(xcoord, ycoord, click),
             universe.spaces.PointerEvent(xcoord, ycoord, 0)]
   return action
 
@@ -167,8 +160,15 @@ score_requirement = -200#-150
 initial_games = 50#10000, 250 adequite
 num_training_games = 100#>1000
 
-# x, y coordinates for Click games
-action_space = 2
+# (up, down, left, right, click) for Click games
+action_space = 5
+mouse_x = 90
+mouse_y = 170
+
+x_min = 10; x_max = 170
+y_min = 125; y_max = 280
+ 
+#TODO: feed instructions through vector space model and train LSTM/CNN/NN
   
 if __name__ == "__main__":
   # automatically creates a local docker container
