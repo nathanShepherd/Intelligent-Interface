@@ -6,6 +6,8 @@ This RL agent is detailed extensively in the accompanied research paper.
 	
 - Impliment mwob_Actor which can take 5 actions (up, down, left, right, click) at each time step using DQN
 
+- Use a CRF or RNN/LSTM to help estimate the Q-Function relative to the current point in time
+
 **_CustomDQN_** is the current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
 
 **_future_models_** are RL models still in production that have no guarantee of their effectiveness.
