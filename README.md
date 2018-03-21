@@ -1,13 +1,14 @@
-# Implimentation of the Intelligent Human-Computer interface. This RL agent is detailed extensively in the accompanied research paper.
+# Intelligent Human-Computer interface. 
+This RL agent is detailed extensively in the accompanied research paper.
 
-###TODO:
+### TODO:
 - Impliment Actor-Critic system that takes observations as a continous 2D space and outputs actions in a continuous 2D space
 	
 - Impliment mwob_Actor which can move the mouse (up, down, left, right) at each time step using DQN
 
 **_CustomDQN_** is the current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
 
-**__future_models__** are RL models still in production that have no guarantee of their effectiveness.
+**_ _future_models_ _**are RL models still in production that have no guarantee of their effectiveness.
 
 **_code_references_** are code samples found elsewhere on github, they may be used as a reference when updating files in _future_models_
 
