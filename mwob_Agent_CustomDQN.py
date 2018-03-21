@@ -64,15 +64,11 @@ def get_obs_space(env):
   #crop observation window to fit mwob window
   crop = np.array(x[75:75+210, 10:10+160, :])
 
-  #TODO: decide action space from env name
-  action = np.array([[0,0,0],[0,0,1],[0,0,0]])
-
   return crop.shape
 
 def create_random_samples(init_obs, env):
     # [state, action, reward, state_new, done]
     training_data = []
-    scores = []
     
     # just the scores that met threshold:
     accepted_scores = []
@@ -87,8 +83,8 @@ def create_random_samples(init_obs, env):
 
         for _ in range(goal_steps):
             #TODO: Take actions across continuous 2D plane
-            action = random.randrange(0, action_space)
-            action = action
+            action = observe_and_take_random_action(state)
+
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
                 
@@ -105,7 +101,6 @@ def create_random_samples(init_obs, env):
                 training_data.append(data)
                 
         init_obs = env.reset()
-        scores.append(score)
 
     training_data_save = np.array(training_data)
     #np.save('lunar_lander_training_data.npy',training_data_save)
@@ -162,8 +157,8 @@ num_training_games = 100#>1000
 
 # (up, down, left, right, click) for Click games
 action_space = 5
-mouse_x = 90
-mouse_y = 170
+mouse_x_pos = 90
+mouse_y_pos = 170
 
 x_min = 10; x_max = 170
 y_min = 125; y_max = 280
