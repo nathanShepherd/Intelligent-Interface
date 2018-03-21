@@ -4,7 +4,7 @@ This RL agent is detailed extensively in the accompanied research paper.
 ### TODO:
 - Impliment Actor-Critic system that takes observations as a continous 2D space and outputs actions in a continuous 2D space
 	
-- Impliment mwob_Actor which can move the mouse (up, down, left, right) at each time step using DQN
+- Impliment mwob_Actor which can take 5 actions (up, down, left, right, click) at each time step using DQN
 
 **_CustomDQN_** is the current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
 
