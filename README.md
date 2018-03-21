@@ -20,11 +20,11 @@ This RL agent is detailed extensively in the accompanied research paper.
 ```
 sudo apt-get install python3.6
 ```
-OpenAI's Universe environments are only supported on Linux and Mac distributions (does not work on Windows). If you only have a Windows OS you have the option to run CustomDQN on the OpenAI's Gym environments (see gym_environment_tests). I recommend using Python3.6 to execute the code in this repository.
+OpenAI's Universe environments are only supported on Linux and Mac distributions (does not work on Windows). If you only have a Windows OS you have the option to run CustomDQN on the OpenAI's Gym environments (see _gym_environment_tests_). I recommend using Python3.6 to execute the code in this repository.
 
 Once you have python installed, you will need to install the required modules via `pip`:
 ```
 pip install matplotlib numpy tensorflow keras gym universe
 ```
 
-In order to use the gym_enviornment_tests/LunarLander you may need to `pip install gym[box2d]`
+In order to use _gym_enviornment_tests/LunarLander_ you will need to `pip install gym[box2d]`
