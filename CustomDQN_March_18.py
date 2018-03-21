@@ -7,7 +7,7 @@ import datetime
 import random
 import numpy as np
 
-import matplotlib.pyplot as Plot
+import matplotlib.pyplot as plt
 
 from keras.optimizers import Adam
 from keras.models import Sequential
@@ -20,6 +20,9 @@ class Memory:
         self.container = []
 
     def push_sample(self,state, action, reward, state_next, done):
+        if len(self.container) > self.capacity:
+            del self.container[random.randint(0, len(self.container) - 1)]
+            
         self.container.append([state, action, reward, state_next, done])
 
     def get_sample(self, size):
@@ -35,10 +38,10 @@ class Memory:
         return self.capacity
     
     def graph(self, num_scores=1000):
-        data = self.avg_scores[-1::][:num_scores]
+        data = self.get_scores()[-1::][:num_scores]
         print("Displaying last {} scores".format(num_scores))
-        Plot([datum[2] for datum in data])
-        Plot.show()
+        plt.plot([i for i in range(len(data))], data)
+        plt.show()
         
     
 class DQN:
@@ -52,6 +55,7 @@ class DQN:
             reward_decay=0.9,
             learning_rate=0.005,
             random_action_chance=0.9,
+            random_action_decay=0.99,
 
             hidden=None,
             batch_size=32,
@@ -64,6 +68,7 @@ class DQN:
         self.gamma = reward_decay
         self.LR = learning_rate
         self.epsilon = random_action_chance
+        self.random_action_decay = random_action_decay
 
         self.hidden = None
         self.batch_size = batch_size
@@ -77,11 +82,11 @@ class DQN:
         model = Sequential()
         model.add(Dense(20, input_shape=(1,) + observation_space))
         model.add(Flatten())
-        model.add(Dense(16))
+        model.add(Dense(50))
         model.add(Activation('relu'))
-        model.add(Dense(16))
+        model.add(Dense(100))
         model.add(Activation('relu'))
-        model.add(Dense(16))
+        model.add(Dense(50))
         model.add(Activation('relu'))
         model.add(Dense(nb_actions))
         model.add(Activation('linear'))
@@ -101,7 +106,7 @@ class DQN:
         self.memory.push_sample(state, action, reward, state_next, done)
 
     '''less likely to randomly take action relative to get_action (improved stability)'''
-    def use_policy(self, state):
+    def use_policy(self, state):        
         state = np.expand_dims(state, axis=0)
         state = np.stack((state,), axis=1)
 
@@ -132,6 +137,9 @@ class DQN:
         inputs_shape = (self.batch_size,) + self.observation_space
         inputs = np.zeros(inputs_shape)
         targets = np.zeros((self.batch_size, self.action_space))
+
+        #decrease random action probability
+        self.epsilon *= self.random_action_decay
 
         #print("Training on batch of size:", self.batch_size)
         for i in range(len(transitions)):

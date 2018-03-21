@@ -72,7 +72,7 @@ def create_random_samples(init_obs):
 env = gym.make("LunarLander-v2")
 goal_steps = 900#2000
 score_requirement = -1.5#-1.5
-initial_games = 500#10000, 250 adequite
+initial_games = 250#10000, ~250
 
 num_training_games = 100#>1000
 action_space = 4
@@ -84,7 +84,7 @@ if __name__ == "__main__":
                 memory_size=50000,
                 learning_rate=0.0005,
 
-                random_action_decay=0.5,
+                random_action_decay=0.99,
                 )
                 #epsilon_max=0.9,
                 #random_action_decay=1000,
@@ -108,6 +108,8 @@ if __name__ == "__main__":
 
         total_reward = 0
         for episode in range(goal_steps):
+            #Render while Agent trains
+            #  will slow training but fun to watch
             #env.render()
 
             #ACTION:::: 3
@@ -148,8 +150,9 @@ if __name__ == "__main__":
             #Agent.store_transition(state, action, reward, state_new, done)      
             state = state_new
             if done: break
+    
+    Agent.save_model("")
 
-    Agent.save_model("./../../saved_models/LunarLander/")
     Agent.display_statisics_to_console()
     print("Score Requirement:",score_requirement)
 

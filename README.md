@@ -20,7 +20,7 @@ Once you have python installed, you will need to install the required modules vi
 ```
 pip install matplotlib numpy tensorflow keras gym universe
 ```
-In order to use _gym_enviornment_tests/LunarLander_ you will need to `pip install gym[box2d]`
+In order to use _gym_enviornment_tests/LunarLander_ you will need to `pip install gym[box2d] box2d-py`
 
 #### Clone Repository Tree using Git
 ```

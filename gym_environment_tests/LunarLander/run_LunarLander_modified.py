@@ -14,6 +14,9 @@ gym: 0.8.0
 
 import gym
 from gym import wrappers
+
+import sys
+sys.path.append('./../../code_references')
 from DuelingDQNPrioritizedReplay import DuelingDQNPrioritizedReplay
 
 env = gym.make('LunarLander-v2')
