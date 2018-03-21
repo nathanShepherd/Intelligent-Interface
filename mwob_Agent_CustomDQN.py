@@ -66,6 +66,37 @@ def get_obs_space(env):
 
   return crop.shape
 
+def reset_mouse_pos():
+  mouse_x_pos = 90
+  mouse_y_pos = 170
+
+def move_mouse_and_check_boundries(move):
+  penalty = 0
+  #move left, right; check bounds
+  if move == 0: mouse_x_pos -= velocity
+  if move == 1: mouse_x_pos += velocity
+  if mouse_x_pos > x_max:
+    penalty = 0.1
+    mouse_x_pos = x_max - velocity
+  if mouse_x_pos <= x_min:
+    penalty = 0.1
+    mouse_x_pos = x_min + velocity
+
+  #move up, down; check bounds
+  if move == 2: mouse_y_pos += velocity
+  if move == 3: mouse_y_pos -= velocity
+  if mouse_y_pos > y_max:
+    penalty += 0.1
+    mouse_y_pos = y_max - velocity
+  if mouse_y_pos <= y_min:
+    penalty += 0.1
+    mouse_y_pos = y_min + velocity
+
+  click = 0
+  if move == 4:  click = 1
+
+  return click, penalty
+
 def create_random_samples(init_obs, env):
     # [state, action, reward, state_new, done]
     training_data = []
@@ -80,15 +111,21 @@ def create_random_samples(init_obs, env):
         score = 0
         game_memory = []
         state = init_obs
+        reset_mouse_pos()
 
         for _ in range(goal_steps):
             #TODO: Take actions across continuous 2D plane
-            action = observe_and_take_random_action(state)
+            move = random.randrange(0, action_space)
+            print("Q-Action:", q_act)
+            
+            click, penalty = move_mouse_and_check_boundries(move)
+       
+            action = coord_to_event(mouse_x_pos, mouse_y_pos, click)
 
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
                 
-            game_memory.append([state, action, reward, state_new, done])
+            game_memory.append([state, move, reward - penalty, state_new, done])
             score += reward
             
             if done: break
@@ -117,11 +154,7 @@ def get_CustomDQN_Agent(env, action_shape, observation_space):
   #print(env.action_space.buttonmasks)# get "buttonmasks"???
   # checkout universe/universe/spaces/vnc_action_space.py
   # ^^^This repo provides more information about key events
-  nb_actions = 1
-  for dim in action_shape:
-    nb_actions *= dim
-  print("Length of unwrapped action space:", nb_actions)
-  print('}{}{}}{}{}{}{}{}{}{}{}{}{}{')
+
 
 '''Take in coordinates on the screen, return action as a list of VNC events'''
 def coord_to_event(xcoord, ycoord, click):
@@ -155,10 +188,11 @@ score_requirement = -200#-150
 initial_games = 50#10000, 250 adequite
 num_training_games = 100#>1000
 
-# (up, down, left, right, click) for Click games
+# (left, right, up, down, click) for Click games
 action_space = 5
 mouse_x_pos = 90
 mouse_y_pos = 170
+velocity = 5
 
 x_min = 10; x_max = 170
 y_min = 125; y_max = 280
@@ -179,8 +213,20 @@ if __name__ == "__main__":
   initial_observation = env.reset()
   training_data = create_random_samples(initial_observation, env)
   
+  Agent = DQN(batch_size=64,
+              memory_size=50000,
+              learning_rate=0.005,
+              random_action_decay=0.5,)
 
-  Agent = get_CustomDQN_Agent(env, act_space, obs_space)
+  print("Storing training data")
+  for datum in training_data:
+      s, a, r, s_, done = datum
+      Agent.store_transition(s, a, r, s_, done)
+
+  Agent.init_model(obs_space, action_space)
+  Agent.train()
+
+
 
 
 
