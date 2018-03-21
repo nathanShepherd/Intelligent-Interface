@@ -16,8 +16,13 @@ This RL agent is detailed extensively in the accompanied research paper.
 
 **_code_references_** are code samples found elsewhere on github, they may be used as a reference when updating files in _future_models_
 
-Install required dependencies:
+#### Install required dependencies:
+```
+sudo apt-get install python3.6
+```
+OpenAI's Universe enviornments are only supported on Linux and Mac distrobutions (does not work on Windows). If you only have a Windows OS you have the option to run CustomDQN on the OpenAI's Gym enviornments (see gym_enviornment_tests). I recommend using Python3.6 in order to execute the code in this repository.
 
+Once you have python installed, you will need to install the required modules via `pip`:
 ```
 pip install matplotlib numpy tensorflow keras gym universe
 ```
