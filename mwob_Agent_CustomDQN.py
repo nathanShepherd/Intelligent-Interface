@@ -10,6 +10,7 @@ import gym
 import universe
 import numpy as np
 
+import time
 import random
 from CustomDQN_March_18 import DQN
 
@@ -43,6 +44,8 @@ def observe_and_take_random_action(obs):
   #return list of vnc events
   return action
 
+''' Waits for three games until game properly initializes '''
+''' TODO: Analyze instructions to pick apropriate Agent   '''
 def get_obs_space(env):
   observation = env.reset()
   done = False
@@ -66,11 +69,15 @@ def get_obs_space(env):
 
   return crop.shape
 
-def reset_mouse_pos():
+def reset_mouse_pos(mouse_x_pos, mouse_y_pos):
   mouse_x_pos = 90
   mouse_y_pos = 170
+  return mouse_x_pos, mouse_y_pos
 
-def move_mouse_and_check_boundries(move):
+def update_position(move, mouse_x_pos, mouse_y_pos, velocity):
+  x_min = 10; x_max = 170
+  y_min = 125; y_max = 280
+  
   penalty = 0
   #move left, right; check bounds
   if move == 0: mouse_x_pos -= velocity
@@ -95,38 +102,58 @@ def move_mouse_and_check_boundries(move):
   click = 0
   if move == 4:  click = 1
 
-  return click, penalty
+  return mouse_x_pos, mouse_y_pos, click, penalty
 
-def create_random_samples(init_obs, env):
+def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
     # [state, action, reward, state_new, done]
     training_data = []
     
     # just the scores that met threshold:
     accepted_scores = []
+
+    init_obs = env.reset()
+    mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
     
-    for i in range(initial_games):
-        if i % 10 == 0:
-            print('Observing random samples: {}%'.format(i*100/initial_games))
+    for game in range(initial_games):
+        if game % 10 == 0:
+            print('=========\nObserving random samples: {}%'.format(game*100/initial_games))
             
         score = 0
         game_memory = []
         state = init_obs
-        reset_mouse_pos()
+        #mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
 
-        for _ in range(goal_steps):
-            #TODO: Take actions across continuous 2D plane
-            move = random.randrange(0, action_space)
-            print("Q-Action:", q_act)
+        init_obs = env.reset()#????????? may need removal
+
+        for frame in range(goal_steps):
             
-            click, penalty = move_mouse_and_check_boundries(move)
-       
-            action = coord_to_event(mouse_x_pos, mouse_y_pos, click)
+          
+            action = []
+            for _ in state:
+              #TODO: Take actions across continuous 2D space
+              move = random.randrange(0, action_space)
+              print("Q-Action:", move)
+              
+              mouse_x_pos, mouse_y_pos, click, penalty = update_position(move, mouse_x_pos, mouse_y_pos, vel)
+              update = coord_to_event(mouse_x_pos, mouse_y_pos, click)
+              action.append(update)
+
+              #TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+              #TODO:  ^^^^^^^Figure out why create_random_samples does not^^^^^^^^^^
+              #TODO: ^^^^^^move mouse but play random games is working fine^^^^^^^^^^
 
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
-                
-            game_memory.append([state, move, reward - penalty, state_new, done])
-            score += reward
+
+            reward[0] -= penalty
+            game_memory.append([state, move, reward, state_new, done])
+            print("\n\n~~~~~~~~ Reward: ", reward, "\n\n~~~~~~~~")
+            print("\n\n~~~~~~~~ Action: ", action, "\n\n~~~~~~~~")
+            score += reward[0]
+
+            state = state_new
+
+            env.render()
             
             if done: break
 
@@ -142,8 +169,8 @@ def create_random_samples(init_obs, env):
     training_data_save = np.array(training_data)
     #np.save('lunar_lander_training_data.npy',training_data_save)
     
-    print('Average accepted score:',mean(accepted_scores))
-    print('Median score for accepted scores:',median(accepted_scores))
+    print('Average accepted score:',np.mean(accepted_scores))
+    print('Median score for accepted scores:',np.median(accepted_scores))
     print("Number of acccepted scores:", len(accepted_scores))
     
     return np.array(training_data)
@@ -171,28 +198,33 @@ def coord_to_event(xcoord, ycoord, click):
 def random_game_loop(env):
   observation = env.reset()
 
-  while True:
-    #agent takes an action for each observation
-    action_n = [observe_and_take_random_action(obs) for obs in observation]
-    observation, reward_n, done_n, info = env.step(action_n)
-    print('####\nReward:', reward_n,'\n')
-    print("####\nInfo:", info, '\n')
-    env.render()
+  start_time = time.time()
+  for episode in range(10):
+    for frame  in range(100):
+      #agent takes an action for each observation
+      action_n = [observe_and_take_random_action(obs) for obs in observation]
+      observation, reward_n, done_n, info = env.step(action_n)
+      print('####\nReward:', reward_n,'\n')
+      print("####\nInfo:", info, '\n')
+      env.render()
+
+      if time.time() - start_time > 20:#30
+        break
 
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
     
 #initialize game environment
 env = gym.make('wob.mini.ClickButton-v0')
-goal_steps = 1000#2000
+goal_steps = 100000#just barely starts at 100000
 score_requirement = -200#-150
-initial_games = 50#10000, 250 adequite
+initial_games = 1000#
 num_training_games = 100#>1000
 
 # (left, right, up, down, click) for Click games
 action_space = 5
 mouse_x_pos = 90
 mouse_y_pos = 170
-velocity = 5
+velocity = 30
 
 x_min = 10; x_max = 170
 y_min = 125; y_max = 280
@@ -205,13 +237,16 @@ if __name__ == "__main__":
               vnc_kwargs={'encoding':'tight', 'compress_level': 0,
                           'fine_quality_level': 100, 'subsample_level': 0})
 
+  random_game_loop(env)
   
   obs_space= get_obs_space(env)
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
 
   initial_observation = env.reset()
-  training_data = create_random_samples(initial_observation, env)
+  training_data = create_random_samples(initial_observation, env,
+                                        mouse_x_pos, mouse_y_pos,
+                                        velocity)
   
   Agent = DQN(batch_size=64,
               memory_size=50000,
