@@ -123,7 +123,7 @@ def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
         state = init_obs
         #mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
 
-        init_obs = env.reset()#????????? may need removal
+        #init_obs = env.reset()#????????? may need removal
 
         for frame in range(goal_steps):
             
@@ -208,7 +208,7 @@ def random_game_loop(env):
       print("####\nInfo:", info, '\n')
       env.render()
 
-      if time.time() - start_time > 20:#30
+      if time.time() - start_time > 25:#30
         break
 
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
