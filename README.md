@@ -1,5 +1,5 @@
 # Intelligent Human-Computer interface. 
-This RL agent is detailed extensively in the accompanied research paper.
+This RL agent is detailed extensively in the accompanied research paper to be published April 2018.
 
 ### How to Navigate this Repository
 **_CustomDQN_** is the current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
