@@ -69,40 +69,54 @@ def get_obs_space(env):
 
   return crop.shape
 
-def reset_mouse_pos(mouse_x_pos, mouse_y_pos):
-  mouse_x_pos = 90
-  mouse_y_pos = 170
-  return mouse_x_pos, mouse_y_pos
+def reset_mouse_pos(x, y):
+  x = 90
+  y = 170
+  return x, y
 
-def update_position(move, mouse_x_pos, mouse_y_pos, velocity):
+def update_position(move, x, y, velocity):
   x_min = 10; x_max = 170
   y_min = 125; y_max = 280
   
   penalty = 0
   #move left, right; check bounds
-  if move == 0: mouse_x_pos -= velocity
-  if move == 1: mouse_x_pos += velocity
-  if mouse_x_pos > x_max:
-    penalty = 0.1
-    mouse_x_pos = x_max - velocity
-  if mouse_x_pos <= x_min:
-    penalty = 0.1
-    mouse_x_pos = x_min + velocity
+  if move == 0: x -= velocity
+  if move == 1: x += velocity
 
   #move up, down; check bounds
-  if move == 2: mouse_y_pos += velocity
-  if move == 3: mouse_y_pos -= velocity
-  if mouse_y_pos > y_max:
+  if move == 2: y += velocity
+  if move == 3: y -= velocity
+
+  if x > x_max:
+    penalty = 0.1
+    x = x_max - velocity
+  if x <= x_min:
+    penalty = 0.1
+    x = x_min + velocity
+  if y > y_max:
     penalty += 0.1
-    mouse_y_pos = y_max - velocity
-  if mouse_y_pos <= y_min:
+    y = y_max - velocity
+  if y <= y_min:
     penalty += 0.1
-    mouse_y_pos = y_min + velocity
+    y = y_min + velocity
 
   click = 0
   if move == 4:  click = 1
 
-  return mouse_x_pos, mouse_y_pos, click, penalty
+  return x, y, click, penalty
+
+def get_training_data(env):
+  observation = env.reset()
+
+  for episode in range(initial_games):
+    for frame  in range(goal_steps):
+      #agent takes an action for each observation
+      action_n = [observe_and_take_random_action(obs) for obs in observation]
+      observation, reward_n, done_n, info = env.step(action_n)
+      print("\n\n~~~~~~~~ Reward: ", reward_n, "\n\n~~~~~~~~")
+      print("\n\n~~~~~~~~ Action: ", action_n, "\n\n~~~~~~~~")
+      env.render()
+  
 
 def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
     # [state, action, reward, state_new, done]
@@ -113,12 +127,16 @@ def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
 
     init_obs = env.reset()
     mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
+
+    x_min = 10; x_max = 170
+    y_min = 125; y_max = 280
     
     for game in range(initial_games):
         if game % 10 == 0:
             print('=========\nObserving random samples: {}%'.format(game*100/initial_games))
             
         score = 0
+        penalty = 0
         game_memory = []
         state = init_obs
         #mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
@@ -127,26 +145,32 @@ def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
 
         for frame in range(goal_steps):
             
-          
+            '''
             action = []
             for _ in state:
               #TODO: Take actions across continuous 2D space
-              move = random.randrange(0, action_space)
+              #move = random.randrange(0, action_space)
+              move = [random.randrange(x_min, x_max), random.randrange(y_min, y_max)]
               print("Q-Action:", move)
               
-              mouse_x_pos, mouse_y_pos, click, penalty = update_position(move, mouse_x_pos, mouse_y_pos, vel)
-              update = coord_to_event(mouse_x_pos, mouse_y_pos, click)
+              #mouse_x_pos, mouse_y_pos, click, penalty = update_position(move, mouse_x_pos, mouse_y_pos, vel)
+              #update = coord_to_event(mouse_x_pos, mouse_y_pos, click)
+              click = 1
+              penalty = 0
+              update = coord_to_event(move[0], move[1], click)
               action.append(update)
 
               #TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
               #TODO:  ^^^^^^^Figure out why create_random_samples does not^^^^^^^^^^
               #TODO: ^^^^^^move mouse but play random games is working fine^^^^^^^^^^
+            '''
+            action = [observe_and_take_random_action(obs) for obs in state]
 
             #print("ACTION::::", action, type(action))
             state_new, reward, done, info = env.step(action)
 
             reward[0] -= penalty
-            game_memory.append([state, move, reward, state_new, done])
+            #game_memory.append([state, move, reward, state_new, done])
             print("\n\n~~~~~~~~ Reward: ", reward, "\n\n~~~~~~~~")
             print("\n\n~~~~~~~~ Action: ", action, "\n\n~~~~~~~~")
             score += reward[0]
@@ -156,6 +180,8 @@ def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
             env.render()
             
             if done: break
+
+        
 
         # IF our score >= threshold, we'd like to save [action, obs] pairs
         if score >= score_requirement:
@@ -184,15 +210,15 @@ def get_CustomDQN_Agent(env, action_shape, observation_space):
 
 
 '''Take in coordinates on the screen, return action as a list of VNC events'''
-def coord_to_event(xcoord, ycoord, click):
+def coord_to_event(x, y, click):
   # Line 1: Move to x, y
   # Line 2 & 3: Click at (x, y)
   # TODO: make actions modular with respect to the task required
   #       consider using the env name to decide which class of
   #       set of actions would make the most sense for the context
-  action = [universe.spaces.PointerEvent(xcoord, ycoord, 0),
-            universe.spaces.PointerEvent(xcoord, ycoord, click),
-            universe.spaces.PointerEvent(xcoord, ycoord, 0)]
+  action = [universe.spaces.PointerEvent(x, y, 0),
+            universe.spaces.PointerEvent(x, y, click),
+            universe.spaces.PointerEvent(x, y, 0)]
   return action
 
 def random_game_loop(env):
@@ -206,7 +232,7 @@ def random_game_loop(env):
       observation, reward_n, done_n, info = env.step(action_n)
       print('####\nReward:', reward_n,'\n')
       print("####\nInfo:", info, '\n')
-      env.render()
+      #env.render()
 
       if time.time() - start_time > 25:#30
         break
@@ -215,10 +241,10 @@ def random_game_loop(env):
     
 #initialize game environment
 env = gym.make('wob.mini.ClickButton-v0')
-goal_steps = 100000#just barely starts at 100000
+goal_steps = 100000#just barely starts at 100,000
 score_requirement = -200#-150
-initial_games = 1000#
-num_training_games = 100#>1000
+initial_games = 500#
+num_training_games = 1000#>1000
 
 # (left, right, up, down, click) for Click games
 action_space = 5
@@ -243,6 +269,9 @@ if __name__ == "__main__":
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
 
+  get_training_data(env)
+  
+'''
   initial_observation = env.reset()
   training_data = create_random_samples(initial_observation, env,
                                         mouse_x_pos, mouse_y_pos,
@@ -260,7 +289,7 @@ if __name__ == "__main__":
 
   Agent.init_model(obs_space, action_space)
   Agent.train()
-
+'''
 
 
 
