@@ -106,16 +106,30 @@ def update_position(move, x, y, velocity):
   return x, y, click, penalty
 
 def get_training_data(env):
-  observation = env.reset()
+  state = env.reset()
 
+  training_data = []
   for episode in range(initial_games):
+    game_memory = []
+    
     for frame  in range(goal_steps):
       #agent takes an action for each observation
-      action_n = [observe_and_take_random_action(obs) for obs in observation]
-      observation, reward_n, done_n, info = env.step(action_n)
+      action_n = [observe_and_take_random_action(obs) for obs in state]
+      state_next, reward_n, done_n, info = env.step(action_n)
       print("\n\n~~~~~~~~ Reward: ", reward_n, "\n\n~~~~~~~~")
       print("\n\n~~~~~~~~ Action: ", action_n, "\n\n~~~~~~~~")
       env.render()
+
+      transition = [state, action_n, reward_n, state_next, done_n]
+      game_memory.append(transition)
+
+      state = state_next
+      ##IS THIS LOOP EVER GOING TO END???
+      # TODO: end this loop, observe done_n vector
+      if done_n: break
+
+    training_data.append(game_memory)
+  return training_data
   
 
 def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
@@ -241,10 +255,10 @@ def random_game_loop(env):
     
 #initialize game environment
 env = gym.make('wob.mini.ClickButton-v0')
-goal_steps = 100000#just barely starts at 100,000
+goal_steps = 100#just barely starts at 100,000
 score_requirement = -200#-150
 initial_games = 500#
-num_training_games = 1000#>1000
+num_training_games = 100#>1000
 
 # (left, right, up, down, click) for Click games
 action_space = 5
@@ -269,7 +283,7 @@ if __name__ == "__main__":
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
 
-  get_training_data(env)
+  training_data = get_training_data(env)
   
 '''
   initial_observation = env.reset()
