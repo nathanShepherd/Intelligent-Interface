@@ -8,8 +8,12 @@ from statistics import median, mean
 from collections import Counter
 
 import sys
-sys.path.append('./../../')
-from CustomDQN_March_18 import DQN
+try:
+    from CustomDQN_March_18 import DQN
+except ImportError as e:
+    print(e)
+    sys.path.append('./../../')
+    from CustomDQN_March_18 import DQN
 
 def create_random_samples(init_obs):
     # [state, action, reward, state_new, done]
