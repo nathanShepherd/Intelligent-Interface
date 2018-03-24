@@ -27,6 +27,11 @@ In order to use _gym_enviornment_tests/LunarLander_ you will need to `pip instal
 git clone https://github.com/nathanShepherd/Intelligent-Interface.git
 ```
 
+#### Execute Agent in Linux Terminal 
+```
+sudo python mwob_Agent.py
+```                                                                  
+
 #### TODO:
 - Impliment Actor-Critic system that takes observations as a continous 2D space and outputs actions in a continuous 2D space
 	
