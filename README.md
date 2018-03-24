@@ -30,6 +30,10 @@ git clone https://github.com/nathanShepherd/Intelligent-Interface.git
 #### Execute Agent in Linux Terminal 
 ```
 sudo python mwob_Agent.py
+```
+##### Or you can observe the Agent control a Lunar Lander 
+```
+python gym_environment_tests/LunarLander/lunarLander-CustomDQN.py
 ```                                                                  
 
 #### TODO:
