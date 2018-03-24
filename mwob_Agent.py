@@ -69,151 +69,134 @@ def get_obs_space(env):
 
   return crop.shape
 
-def reset_mouse_pos(x, y):
-  x = 90
-  y = 170
-  return x, y
 
-def update_position(move, x, y, velocity):
-  x_min = 10; x_max = 170
-  y_min = 125; y_max = 280
+class Mouse():
+  def __init__(self, velocity, penalty_increment):
+    self.x_min = 10;
+    self.x_max = 170
+    self.y_min = 125;
+    self.y_max = 280
+
+    self.click = 1
+    self.velocity = velocity
+
+    self.x = int(170/2)
+    self.y = int(280/2)
+
+    self.penalty = 0
+    self.delta = penalty_increment
+
+    self.last_move = 0
+
+  def reset(self):
+    self.x = int(170/2)
+    self.y = int(280/2)
+    self.penalty = 0
+
+  def get_penalty(self):
+    return self.penalty
+
+  def last_action(self):
+    return self.last_move
+
+  def random_move(self):
+    move = random.randrange(0, action_space)
+    self.update(move)
+    
+    return coord_to_event(self.x, self.y, self.click)
+
+  def update(self, action):
+    #move left, right
+    if action == 0: self.x -= self.velocity
+    if action == 1: self.x += self.velocity
+
+    #move up, down
+    if action == 2: self.y += self.velocity
+    if action == 3: self.y -= self.velocity
+
+    self.last_move = action
+    
+    if action == 4:
+      self.click = 1
+    else:
+      self.click = 0
+
+    #check for out of bounds
+    if self.x > self.x_max:
+      self.penalty += self.delta
+      self.x = self.x_max - self.velocity
+      
+    if self.x <= self.x_min:
+      self.penalty += self.delta
+      self.x = self.x_min + self.velocity
+      
+    if self.y > self.y_max:
+      self.penalty += self.delta
+      self.y = self.y_max - self.velocity
+
+    if self.y <= self.y_min:
+      self.penalty += self.delta
+      self.y = self.y_min + self.velocity
+
   
-  penalty = 0
-  #move left, right; check bounds
-  if move == 0: x -= velocity
-  if move == 1: x += velocity
 
-  #move up, down; check bounds
-  if move == 2: y += velocity
-  if move == 3: y -= velocity
-
-  if x > x_max:
-    penalty = 0.1
-    x = x_max - velocity
-  if x <= x_min:
-    penalty = 0.1
-    x = x_min + velocity
-  if y > y_max:
-    penalty += 0.1
-    y = y_max - velocity
-  if y <= y_min:
-    penalty += 0.1
-    y = y_min + velocity
-
-  click = 0
-  if move == 4:  click = 1
-
-  return x, y, click, penalty
-
-def get_training_data(env):
-  state = env.reset()
+def get_training_data(env, vel):
+  mouse = Mouse(velocity=vel,
+                penalty_increment=0.1)
 
   training_data = []
-  for episode in range(initial_games):
+  state = env.reset()
+  
+  for episode in range(num_random_games):
+    p = episode*100/num_random_games
     game_memory = []
+    game_score = 0
+    mouse.reset()
     
     for frame  in range(goal_steps):
       #agent takes an action for each observation
-      action_n = [observe_and_take_random_action(obs) for obs in state]
-      state_next, reward_n, done_n, info = env.step(action_n)
-      print("\n\n~~~~~~~~ Reward: ", reward_n, "\n\n~~~~~~~~")
-      print("\n\n~~~~~~~~ Action: ", action_n, "\n\n~~~~~~~~")
-      env.render()
+      #action_n = [observe_and_take_random_action(obs) for obs in state]
+      action = [mouse.random_move() for obs in state]
 
-      transition = [state, action_n, reward_n, state_next, done_n]
+      #all transition variables are at least vectors
+      state_next, reward, done, info = env.step(action)
+      
+      print('=========\nObserving random samples: {}%========='.format(p))
+      print("\n\n~~~~~~~~ Reward: ", reward,)
+      print(    "~~~~~~~~ Action: ", action,)
+      print(    "~~~~~~~~   Info: ",   info, "\n\n~~~~~~~~")      
+
+      transition = [state, mouse.last_action(), reward, state_next, done]
       game_memory.append(transition)
+      
+      game_score += reward[0] - mouse.get_penalty()
+
 
       state = state_next
       ##IS THIS LOOP EVER GOING TO END???
       # TODO: end this loop, observe done_n vector
-      if done_n: break
+      # Me to me: This loop ends
+      
+      env.render()
+      if done[0]: break
 
-    training_data.append(game_memory)
+    if game_score > score_requirement:
+      #TODO: Restore correlation of entire episode
+      # i.e. --> training_data.append(game_memory)
+      [training_data.append(trans) for trans in game_memory]
+
+  accepted_scores = [datum[2] for datum in game_memory]
+  #for game in training_data:
+  #  for trans in game:
+  #    accepted_scores.append(trans[2])
+  print('Average accepted score:',np.mean(accepted_scores))
+  print('Median score for accepted scores:',np.median(accepted_scores))
+  print("Number of acccepted scores:", len(accepted_scores))
+
+  #np.save('mwob_Agent_training_data.npy', np.array(training_data))
   return training_data
   
 
-def create_random_samples(init_obs, env, mouse_x_pos, mouse_y_pos, vel):
-    # [state, action, reward, state_new, done]
-    training_data = []
-    
-    # just the scores that met threshold:
-    accepted_scores = []
-
-    init_obs = env.reset()
-    mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
-
-    x_min = 10; x_max = 170
-    y_min = 125; y_max = 280
-    
-    for game in range(initial_games):
-        if game % 10 == 0:
-            print('=========\nObserving random samples: {}%'.format(game*100/initial_games))
-            
-        score = 0
-        penalty = 0
-        game_memory = []
-        state = init_obs
-        #mouse_x_pos, mouse_y_pos = reset_mouse_pos(mouse_x_pos, mouse_y_pos)
-
-        #init_obs = env.reset()#????????? may need removal
-
-        for frame in range(goal_steps):
-            
-            '''
-            action = []
-            for _ in state:
-              #TODO: Take actions across continuous 2D space
-              #move = random.randrange(0, action_space)
-              move = [random.randrange(x_min, x_max), random.randrange(y_min, y_max)]
-              print("Q-Action:", move)
-              
-              #mouse_x_pos, mouse_y_pos, click, penalty = update_position(move, mouse_x_pos, mouse_y_pos, vel)
-              #update = coord_to_event(mouse_x_pos, mouse_y_pos, click)
-              click = 1
-              penalty = 0
-              update = coord_to_event(move[0], move[1], click)
-              action.append(update)
-
-              #TODO: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-              #TODO:  ^^^^^^^Figure out why create_random_samples does not^^^^^^^^^^
-              #TODO: ^^^^^^move mouse but play random games is working fine^^^^^^^^^^
-            '''
-            action = [observe_and_take_random_action(obs) for obs in state]
-
-            #print("ACTION::::", action, type(action))
-            state_new, reward, done, info = env.step(action)
-
-            reward[0] -= penalty
-            #game_memory.append([state, move, reward, state_new, done])
-            print("\n\n~~~~~~~~ Reward: ", reward, "\n\n~~~~~~~~")
-            print("\n\n~~~~~~~~ Action: ", action, "\n\n~~~~~~~~")
-            score += reward[0]
-
-            state = state_new
-
-            env.render()
-            
-            if done: break
-
-        
-
-        # IF our score >= threshold, we'd like to save [action, obs] pairs
-        if score >= score_requirement:
-            accepted_scores.append(score)
-            
-            for data in game_memory:
-                training_data.append(data)
-                
-        init_obs = env.reset()
-
-    training_data_save = np.array(training_data)
-    #np.save('lunar_lander_training_data.npy',training_data_save)
-    
-    print('Average accepted score:',np.mean(accepted_scores))
-    print('Median score for accepted scores:',np.median(accepted_scores))
-    print("Number of acccepted scores:", len(accepted_scores))
-    
-    return np.array(training_data)
 
 def get_CustomDQN_Agent(env, action_shape, observation_space):
   print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
@@ -256,18 +239,13 @@ def random_game_loop(env):
 #initialize game environment
 env = gym.make('wob.mini.ClickButton-v0')
 goal_steps = 100#just barely starts at 100,000
-score_requirement = -200#-150
-initial_games = 500#
+score_requirement = -100#0
+num_random_games = 1#1000
 num_training_games = 100#>1000
 
 # (left, right, up, down, click) for Click games
 action_space = 5
-mouse_x_pos = 90
-mouse_y_pos = 170
-velocity = 30
-
-x_min = 10; x_max = 170
-y_min = 125; y_max = 280
+velocity = 50
  
 #TODO: feed instructions through vector space model and train LSTM/CNN/NN
   
@@ -280,18 +258,15 @@ if __name__ == "__main__":
   random_game_loop(env)
   
   obs_space= get_obs_space(env)
-  print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
-  print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
 
-  training_data = get_training_data(env)
+
+  training_data = get_training_data(env, velocity)
+
+  print("Compiled random game data, Initializing Agent ...")
   
-'''
   initial_observation = env.reset()
-  training_data = create_random_samples(initial_observation, env,
-                                        mouse_x_pos, mouse_y_pos,
-                                        velocity)
-  
-  Agent = DQN(batch_size=64,
+
+  Agent = DQN(batch_size=1,#64
               memory_size=50000,
               learning_rate=0.005,
               random_action_decay=0.5,)
@@ -301,9 +276,11 @@ if __name__ == "__main__":
       s, a, r, s_, done = datum
       Agent.store_transition(s, a, r, s_, done)
 
+  print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
+  print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
   Agent.init_model(obs_space, action_space)
   Agent.train()
-'''
+
 
 
 
