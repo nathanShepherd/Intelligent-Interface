@@ -12,7 +12,7 @@ import numpy as np
 
 import time
 import random
-from CustomDQN_March_18 import DQN
+from mwob_CustomDQN import DQN
 
 def observe_and_take_random_action(obs):
   # obs is raw (768,1024,3) uint8 screen .
@@ -29,18 +29,18 @@ def observe_and_take_random_action(obs):
   x = obs['vision']
   crop = np.array(x[75:75+210, 10:10+160, :]) #mwob coordinates crop
   # crop tensor shape --> (210, 160, 3)
-  # crop becomes   [(3, x, 2) matrix, 
-  #  a tensor:      (3, y, 3) matrix (value 0-255), 
+  # crop becomes   [(3, x, 2) matrix,
+  #  a tensor:      (3, y, 3) matrix (value 0-255),
   #                 (3, y, 3) matrix (value 0-255)]
-  
- 
+
+
   xcoord = np.random.randint(0, 160) + 10# add intelligence
   ycoord = np.random.randint(0, 160) + 75 + 50# add intelligence
 
   click = 1
   action = coord_to_event(xcoord, ycoord, click)
   print("action: ",action)
-  
+
   #return list of vnc events
   return action
 
@@ -54,7 +54,7 @@ def get_obs_space(env):
     #agent takes an action for each observation
     action_n = [observe_and_take_random_action(obs) for obs in observation]
     observation, reward_n, done_n, info = env.step(action_n)
-    
+
     #print("%%%%%\nInfo:", info['n'][0])
     env_id = info['n'][0]['env_status.episode_id']
 
@@ -102,7 +102,7 @@ class Mouse():
   def random_move(self):
     move = random.randrange(0, action_space)
     self.update(move)
-    
+
     return coord_to_event(self.x, self.y, self.click)
 
   def update(self, action):
@@ -115,7 +115,7 @@ class Mouse():
     if action == 3: self.y -= self.velocity
 
     self.last_move = action
-    
+
     if action == 4:
       self.click = 1
     else:
@@ -125,11 +125,11 @@ class Mouse():
     if self.x > self.x_max:
       self.penalty += self.delta
       self.x = self.x_max - self.velocity
-      
+
     if self.x <= self.x_min:
       self.penalty += self.delta
       self.x = self.x_min + self.velocity
-      
+
     if self.y > self.y_max:
       self.penalty += self.delta
       self.y = self.y_max - self.velocity
@@ -138,7 +138,7 @@ class Mouse():
       self.penalty += self.delta
       self.y = self.y_min + self.velocity
 
-  
+
 
 def get_training_data(env, vel):
   mouse = Mouse(velocity=vel,
@@ -146,13 +146,13 @@ def get_training_data(env, vel):
 
   training_data = []
   state = env.reset()
-  
+
   for episode in range(num_random_games):
     p = episode*100/num_random_games
     game_memory = []
     game_score = 0
     mouse.reset()
-    
+
     for frame  in range(goal_steps):
       #agent takes an action for each observation
       #action_n = [observe_and_take_random_action(obs) for obs in state]
@@ -160,23 +160,34 @@ def get_training_data(env, vel):
 
       #all transition variables are at least vectors
       state_next, reward, done, info = env.step(action)
-      
+
+      reward[0] -= mouse.get_penalty()
       print('=========\nObserving random samples: {}%========='.format(p))
       print("\n\n~~~~~~~~ Reward: ", reward,)
       print(    "~~~~~~~~ Action: ", action,)
-      print(    "~~~~~~~~   Info: ",   info, "\n\n~~~~~~~~")      
+      print(    "~~~~~~~~   Info: ",   info, "\n\n~~~~~~~~")
 
-      transition = [state, mouse.last_action(), reward, state_next, done]
+      #crop observation window to fit mwob window
+      x_crop=[]; x_next_crop =[]
+      if state[0] != None and state_next[0] != None:
+          x = state[0]['vision']; x_next = state_next[0]['vision'];
+          x_crop = np.array(x[75:75+210, 10:10+160, :])
+          x_next_crop = np.array(x_next[75:75+210, 10:10+160, :])
+
+      #x_crop = np.expand_dims(x_crop, axis=0)
+      #x_next_crop = np.expand_dims(x_next_crop, axis=0)
+
+      transition = [x_crop, mouse.last_action(), reward[0], x_next_crop, done]
       game_memory.append(transition)
-      
-      game_score += reward[0] - mouse.get_penalty()
+
+      game_score += reward[0]
 
 
       state = state_next
       ##IS THIS LOOP EVER GOING TO END???
       # TODO: end this loop, observe done_n vector
       # Me to me: This loop ends
-      
+
       env.render()
       if done[0]: break
 
@@ -195,7 +206,7 @@ def get_training_data(env, vel):
 
   #np.save('mwob_Agent_training_data.npy', np.array(training_data))
   return training_data
-  
+
 
 
 def get_CustomDQN_Agent(env, action_shape, observation_space):
@@ -235,7 +246,7 @@ def random_game_loop(env):
         break
 
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
-    
+
 #initialize game environment
 env = gym.make('wob.mini.ClickButton-v0')
 goal_steps = 100#just barely starts at 100,000
@@ -246,9 +257,9 @@ num_training_games = 100#>1000
 # (left, right, up, down, click) for Click games
 action_space = 5
 velocity = 50
- 
+
 #TODO: feed instructions through vector space model and train LSTM/CNN/NN
-  
+
 if __name__ == "__main__":
   # automatically creates a local docker container
   env.configure(remotes=1, fps=5, vnc_driver='go',
@@ -256,17 +267,17 @@ if __name__ == "__main__":
                           'fine_quality_level': 100, 'subsample_level': 0})
 
   random_game_loop(env)
-  
+
   obs_space= get_obs_space(env)
 
 
   training_data = get_training_data(env, velocity)
 
   print("Compiled random game data, Initializing Agent ...")
-  
+
   initial_observation = env.reset()
 
-  Agent = DQN(batch_size=1,#64
+  Agent = DQN(batch_size=2,#64
               memory_size=50000,
               learning_rate=0.005,
               random_action_decay=0.5,)
@@ -280,54 +291,3 @@ if __name__ == "__main__":
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
   Agent.init_model(obs_space, action_space)
   Agent.train()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
