@@ -82,16 +82,17 @@ class DQN:
         model = Sequential()
         #model.add(Dense(20, input_shape=(1,) + observation_space))
         # input: 100x100 images with 3 channels -> (100, 100, 3) tensors.
-# this applies 32 convolution filters of size 3x3 each.
+
+        # this applies 32 convolution filters of size 3x3 each.
         model.add(Conv2D(32, (3, 3),
                          activation='relu',
                          input_shape=observation_space))
         model.add(Conv2D(32, (3, 3), activation='relu'))
         model.add(Dropout(0.25))
 
-        #model.add(Conv2D(64, (3, 3), activation='relu'))
-        #model.add(Conv2D(64, (3, 3), activation='relu'))
-        #model.add(Dropout(0.25))
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Dropout(0.25))
 
         model.add(Flatten())
         model.add(Dense(50))
@@ -133,7 +134,7 @@ class DQN:
         else:
             #add another dimension to state (i.e. batch size is one)
             #state = np.array(state)
-            state = np.expand_dims(state, axis=0)
+            #state = np.expand_dims(state, axis=0)
             #state = np.stack((state,), axis=1)
             #state = np.stack(state, axis=0)
             #print("State shape:",state.shape)
@@ -189,12 +190,15 @@ class DQN:
 
         #add another dimension to state observation (shape[0] <-- self.batch_size)
         #inputs = np.stack((inputs,), axis=1)
-        inputs = np.expand_dims(inputs, axis=1)
+        #inputs = np.expand_dims(inputs, axis=1)
 
 
         #train network to output Q function
-        self.model.fit(inputs, targets, nb_epoch=1, batch_size=self.batch_size, verbose=0)
-        #Verbosity mode. 0 = silent, 1 = progress bar, 2 = one line per epoch.
+        self.model.fit(inputs, targets, epochs=1,
+                       batch_size=self.batch_size,
+                       verbose=0)
+        #Verbosity mode. 0 = silent, 1 = progress bar,
+        #                2 = one line per epoch.
 
     def display_statisics_to_console(self):
         length = self.memory.get_capacity()

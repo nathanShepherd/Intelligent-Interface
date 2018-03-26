@@ -165,14 +165,27 @@ def get_training_data(env, vel):
       print('=========\nObserving random samples: {}%========='.format(p))
       print("\n\n~~~~~~~~ Reward: ", reward,)
       print(    "~~~~~~~~ Action: ", action,)
-      print(    "~~~~~~~~   Info: ",   info, "\n\n~~~~~~~~")
+      print(    "~~~~~~~~   Info: ",   info,)
+      try: #TODO: Use instructions to predict action using Textual Attention
+          if len(state[0]) > 0:
+            print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
+            [print(obs['text']) for obs in state]
+            print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
+      except TypeError as t_e:
+          print(    "~~~~~~~obs[txt]: ", "None", "\n\n~~~~~~~~")
 
       #crop observation window to fit mwob window
-      x_crop=[]; x_next_crop =[]
+      x_crop= np.zeros((1, 210, 160, 3))
+      x_next_crop= np.zeros((1, 210, 160, 3))
       if state[0] != None and state_next[0] != None:
-          x = state[0]['vision']; x_next = state_next[0]['vision'];
+          x = state[0]['vision']
+          x_next = state_next[0]['vision']
+
           x_crop = np.array(x[75:75+210, 10:10+160, :])
+          x_crop = np.reshape(x_crop, (1, 210, 160, 3))
+
           x_next_crop = np.array(x_next[75:75+210, 10:10+160, :])
+          x_next_crop = np.reshape(x_next_crop, (1, 210, 160, 3))
 
       #x_crop = np.expand_dims(x_crop, axis=0)
       #x_next_crop = np.expand_dims(x_next_crop, axis=0)
@@ -182,13 +195,9 @@ def get_training_data(env, vel):
 
       game_score += reward[0]
 
-
       state = state_next
-      ##IS THIS LOOP EVER GOING TO END???
-      # TODO: end this loop, observe done_n vector
-      # Me to me: This loop ends
 
-      env.render()
+      #env.render()
       if done[0]: break
 
     if game_score > score_requirement:
@@ -248,10 +257,15 @@ def random_game_loop(env):
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
 #initialize game environment
-env = gym.make('wob.mini.ClickButton-v0')
+#env = gym.make('wob.mini.ClickButton-v0')
+env = gym.make('wob.mini.click-button')
 goal_steps = 100#just barely starts at 100,000
 score_requirement = -100#0
-num_random_games = 1#1000
+
+#Random games to initialize experience replay
+num_random_games = 5#1000
+
+#Games in which actions are determined by the Agent
 num_training_games = 100#>1000
 
 # (left, right, up, down, click) for Click games
@@ -291,3 +305,57 @@ if __name__ == "__main__":
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
   Agent.init_model(obs_space, action_space)
   Agent.train()
+
+  print("SUCCESS!!!!")
+
+  score_length = 1000
+  scores = []
+  for each_game in range(num_training_games):
+    #sample state from env
+    #State shape: (1, 1, 8)
+    state = env.reset()
+
+    total_reward = 0
+    for episode in range(goal_steps):
+      #env.render()
+
+      #ACTION:::: 3
+      action = Agent.get_action(state)
+      #print("ACTION::::", action)
+
+      state_new, reward, done, info = env.step(action)
+
+      Agent.store_transition(state, action, reward, state_new, done)
+
+      total_reward += reward
+      state = state_new
+      if done: break
+
+    scores.append(total_reward)
+
+    if each_game % 50 == 0:
+      if len(scores) > 1000:
+        scores = scores[-1000:]
+        print("Epochs: {} | {}".format(each_game, num_training_games),
+              "Percent done:", each_game*100/num_training_games,
+              "avg rwd:",round(mean(scores), 3), "last 10 rwd:", round(mean(scores[-10:]), 3))
+    Agent.train()
+
+  # Observe Agent after training
+  for each_game in range(5):
+      state = env.reset()
+      
+      for episode in range(goal_steps):
+          env.render()
+
+          action = Agent.use_policy(state)
+          #action = Agent.get_action(state)
+
+          state_new, reward, done, info = env.step(action)
+          #Agent.store_transition(state, action, reward, state_new, done)
+          state = state_new
+          if done: break
+
+  Agent.save_model("./../../saved_models/mwob/")
+  Agent.display_statisics_to_console()
+  print("Score Requirement:",score_requirement)
