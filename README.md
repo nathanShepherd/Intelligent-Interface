@@ -37,9 +37,7 @@ python gym_environment_tests/LunarLander/lunarLander-CustomDQN.py
 ```                                                                  
 
 #### TODO:
-- Impliment Actor-Critic system that takes observations as a continous 2D space and outputs actions in a continuous 2D space
-	
-- Impliment mwob_Actor which can take 5 actions (up, down, left, right, click) at each time step using DQN
+- Use DenseNet to improve classification accuracy
 
 - Use a CRF or RNN/LSTM to help estimate the Q-Function relative to the current point in time
 
