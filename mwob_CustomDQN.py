@@ -90,13 +90,13 @@ class DQN:
         model.add(Conv2D(32, (3, 3), activation='relu'))
         model.add(Dropout(0.25))
 
-        model.add(Conv2D(64, (3, 3), activation='relu'))
-        model.add(Conv2D(64, (3, 3), activation='relu'))
-        model.add(Dropout(0.25))
+        #model.add(Conv2D(64, (3, 3), activation='relu'))
+        #model.add(Conv2D(64, (3, 3), activation='relu'))
+        #model.add(Dropout(0.25))
 
         model.add(Flatten())
-        model.add(Dense(50))
-        model.add(Activation('relu'))
+        #model.add(Dense(50))
+        #model.add(Activation('relu'))
         model.add(Dense(100))
         model.add(Activation('relu'))
         model.add(Dense(50))
@@ -113,14 +113,17 @@ class DQN:
         self.model = model
 
     def _take_random_action(self):
-        return random.randrange(0, self.action_space)
+        if random.random() < 0.8:#TODO: Anneal click probability
+            return random.randrange(0, self.action_space - 1)
+        else:# Agent is very unlikely to click at first
+            return self.action_space - 1
 
     def store_transition(self, state, action, reward, state_next, done):
         self.memory.push_sample(state, action, reward, state_next, done)
 
     '''less likely to randomly take action relative to get_action (improved stability)'''
     def use_policy(self, state):
-        state = np.expand_dims(state, axis=0)
+        #state = np.expand_dims(state, axis=0)
         #state = np.stack((state,), axis=1)
 
         pred = self.model.predict(state)
@@ -130,6 +133,7 @@ class DQN:
         # decrement epsilon via: e = e_min + (e_max - e_min)^(lambda*time)
         # where lambda is the decay factor
         if random.random() < self.epsilon:
+            # (left, right, up, down, click) for Click games
             return self._take_random_action()
         else:
             #add another dimension to state (i.e. batch size is one)

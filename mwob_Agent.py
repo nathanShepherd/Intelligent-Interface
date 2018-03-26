@@ -72,7 +72,7 @@ def get_obs_space(env):
 
 class Mouse():
   def __init__(self, velocity, penalty_increment):
-    self.x_min = 10;
+    self.x_min = 10;#decrease usable area by velocity?
     self.x_max = 170
     self.y_min = 125;
     self.y_max = 280
@@ -99,10 +99,19 @@ class Mouse():
   def last_action(self):
     return self.last_move
 
+  def Q_pi(self, state, actor, use_policy=False):
+    if use_policy:
+        move = actor.use_policy(state)
+    else:
+        move = actor.get_action(state)
+
+    self.update(move)
+    return coord_to_event(self.x, self.y, self.click)
+
   def random_move(self):
     move = random.randrange(0, action_space)
-    self.update(move)
 
+    self.update(move)
     return coord_to_event(self.x, self.y, self.click)
 
   def update(self, action):
@@ -140,15 +149,14 @@ class Mouse():
 
 
 
-def get_training_data(env, vel):
+def get_training_data(env, vel, show=False):
   mouse = Mouse(velocity=vel,
                 penalty_increment=0.1)
-
   training_data = []
-  state = env.reset()
 
   for episode in range(num_random_games):
     p = episode*100/num_random_games
+    state = env.reset()
     game_memory = []
     game_score = 0
     mouse.reset()
@@ -197,7 +205,7 @@ def get_training_data(env, vel):
 
       state = state_next
 
-      #env.render()
+      if show: env.render()
       if done[0]: break
 
     if game_score > score_requirement:
@@ -238,7 +246,7 @@ def coord_to_event(x, y, click):
             universe.spaces.PointerEvent(x, y, 0)]
   return action
 
-def random_game_loop(env):
+def random_game_loop(env, show=False):
   observation = env.reset()
 
   start_time = time.time()
@@ -249,7 +257,7 @@ def random_game_loop(env):
       observation, reward_n, done_n, info = env.step(action_n)
       print('####\nReward:', reward_n,'\n')
       print("####\nInfo:", info, '\n')
-      #env.render()
+      if show: env.render()
 
       if time.time() - start_time > 25:#30
         break
@@ -257,20 +265,26 @@ def random_game_loop(env):
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
 #initialize game environment
-#env = gym.make('wob.mini.ClickButton-v0')
-env = gym.make('wob.mini.click-button')
-goal_steps = 100#just barely starts at 100,000
+#   ClickShape - Hard (will end game if click in wrong posotion)
+#   ClickButton - TBD (will end game if click wrong button)
+#   TicTacToe - TBD (seems easy enough to play this game at least)
+env_name = "TicTacToe"
+env = gym.make('wob.mini.{}-v0'.format(env_name))
+goal_steps = 100#
 score_requirement = -100#0
 
 #Random games to initialize experience replay
-num_random_games = 5#1000
+num_random_games = 1#1000
 
 #Games in which actions are determined by the Agent
-num_training_games = 100#>1000
+num_training_games = 1#>1000
+
+#Visualize the environment while agent is training
+display_training = True
 
 # (left, right, up, down, click) for Click games
 action_space = 5
-velocity = 50
+velocity = 40
 
 #TODO: feed instructions through vector space model and train LSTM/CNN/NN
 
@@ -280,12 +294,13 @@ if __name__ == "__main__":
               vnc_kwargs={'encoding':'tight', 'compress_level': 0,
                           'fine_quality_level': 100, 'subsample_level': 0})
 
-  random_game_loop(env)
+  #initializes browser window
+  random_game_loop(env, show=False)
 
   obs_space= get_obs_space(env)
 
 
-  training_data = get_training_data(env, velocity)
+  training_data = get_training_data(env, velocity, show=False)
 
   print("Compiled random game data, Initializing Agent ...")
 
@@ -294,7 +309,7 @@ if __name__ == "__main__":
   Agent = DQN(batch_size=2,#64
               memory_size=50000,
               learning_rate=0.005,
-              random_action_decay=0.5,)
+              random_action_decay=0.999,)
 
   print("Storing training data")
   for datum in training_data:
@@ -308,28 +323,46 @@ if __name__ == "__main__":
 
   print("SUCCESS!!!!")
 
-  score_length = 1000
   scores = []
+  score_length = 1000
+
+  m = Mouse(velocity=velocity,
+                penalty_increment=0.1)
+
   for each_game in range(num_training_games):
-    #sample state from env
-    #State shape: (1, 1, 8)
-    state = env.reset()
-
     total_reward = 0
-    for episode in range(goal_steps):
-      #env.render()
+    state = env.reset()
+    m.reset()
 
-      #ACTION:::: 3
-      action = Agent.get_action(state)
-      #print("ACTION::::", action)
+    for episode in range(goal_steps):
+      x_crop= np.zeros((1, 210, 160, 3))
+      x_next_crop= np.zeros((1, 210, 160, 3))
+      if state[0] != None:
+          x = state[0]['vision']
+          x_crop = np.array(x[75:75+210, 10:10+160, :])
+          x_crop = np.reshape(x_crop, (1, 210, 160, 3))
+
+      #Action is an integer returned by Agent, mouse updates position
+      action = [m.Q_pi(x_crop, Agent) for obs in state]
 
       state_new, reward, done, info = env.step(action)
+      if state_new[0] != None:
+          x_next = state_new[0]['vision']
+          x_next_crop = np.array(x_next[75:75+210, 10:10+160, :])
+          x_next_crop = np.reshape(x_next_crop, (1, 210, 160, 3))
 
-      Agent.store_transition(state, action, reward, state_new, done)
+      reward[0] -= m.get_penalty()
+      print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
+      print(m.last_action())
+      print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
 
-      total_reward += reward
+      Agent.store_transition(x_crop,
+                             m.last_action(),
+                             reward[0], x_next_crop, done)
+      total_reward += reward[0]
       state = state_new
-      if done: break
+      if display_training: env.render()
+      if done[0]: break
 
     scores.append(total_reward)
 
@@ -344,18 +377,23 @@ if __name__ == "__main__":
   # Observe Agent after training
   for each_game in range(5):
       state = env.reset()
-      
+
       for episode in range(goal_steps):
           env.render()
+          x_crop= np.zeros((1, 210, 160, 3))
+          x_next_crop= np.zeros((1, 210, 160, 3))
+          if state[0] != None:
+              x = state[0]['vision']
+              x_crop = np.array(x[75:75+210, 10:10+160, :])
+              x_crop = np.reshape(x_crop, (1, 210, 160, 3))
 
-          action = Agent.use_policy(state)
-          #action = Agent.get_action(state)
+          action = [m.Q_pi(x_crop, Agent, use_policy=True) for obs in state]
 
           state_new, reward, done, info = env.step(action)
           #Agent.store_transition(state, action, reward, state_new, done)
           state = state_new
           if done: break
 
-  Agent.save_model("./../../saved_models/mwob/")
+  Agent.save_model("./saved_models/mwob/{}/".format(env_name))
   Agent.display_statisics_to_console()
   print("Score Requirement:",score_requirement)
