@@ -278,10 +278,10 @@ goal_steps = 100#
 score_requirement = -100#0
 
 #Random games to initialize experience replay
-num_random_games = 1#1000
+num_random_games = 10#1000
 
 #Games in which actions are determined by the Agent
-num_training_games = 100*100#>1000
+num_training_games = 100*10#>1000
 
 #Visualize the environment while agent is training
 display_training = False
@@ -310,7 +310,7 @@ if __name__ == "__main__":
 
   initial_observation = env.reset()
 
-  Agent = DQN(batch_size=2,#64
+  Agent = DQN(batch_size=64,#64
               memory_size=50000,
               learning_rate=0.005,
               random_action_decay=0.999,)
@@ -333,7 +333,7 @@ if __name__ == "__main__":
 
   m = Mouse(velocity=velocity,
                 penalty_increment=0)
-'''
+
   for each_game in range(num_training_games):
     total_reward = 0
     state = env.reset()
@@ -379,7 +379,7 @@ if __name__ == "__main__":
     if each_game % 100 == 0:
         Agent.save_model("./saved_models/mwob/{}/".format(env_name))
     Agent.train()
-'''
+
   # Observe Agent after training
   for each_game in range(5):
       state = env.reset()
