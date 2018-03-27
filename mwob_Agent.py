@@ -109,7 +109,11 @@ class Mouse():
     return coord_to_event(self.x, self.y, self.click)
 
   def random_move(self):
-    move = random.randrange(0, action_space)
+    #TODO: Anneal click probability
+    if random.random() < 0.6:#0.8 was giving good results
+        move = random.randrange(0, action_space - 1)
+    else:# Agent is very unlikely to click at first
+        move = action_space - 1
 
     self.update(move)
     return coord_to_event(self.x, self.y, self.click)
@@ -151,7 +155,7 @@ class Mouse():
 
 def get_training_data(env, vel, show=False):
   mouse = Mouse(velocity=vel,
-                penalty_increment=0.1)
+                penalty_increment=0.01)
   training_data = []
 
   for episode in range(num_random_games):
@@ -274,17 +278,17 @@ goal_steps = 100#
 score_requirement = -100#0
 
 #Random games to initialize experience replay
-num_random_games = 1#1000
+num_random_games = 100#1000
 
 #Games in which actions are determined by the Agent
-num_training_games = 1#>1000
+num_training_games = 100*100#>1000
 
 #Visualize the environment while agent is training
-display_training = True
+display_training = False
 
 # (left, right, up, down, click) for Click games
 action_space = 5
-velocity = 40
+velocity = 35#40
 
 #TODO: feed instructions through vector space model and train LSTM/CNN/NN
 
@@ -327,7 +331,7 @@ if __name__ == "__main__":
   score_length = 1000
 
   m = Mouse(velocity=velocity,
-                penalty_increment=0.1)
+                penalty_increment=0.01)
 
   for each_game in range(num_training_games):
     total_reward = 0
@@ -366,12 +370,14 @@ if __name__ == "__main__":
 
     scores.append(total_reward)
 
-    if each_game % 50 == 0:
+    if each_game % 1 == 0:
       if len(scores) > 1000:
         scores = scores[-1000:]
         print("Epochs: {} | {}".format(each_game, num_training_games),
               "Percent done:", each_game*100/num_training_games,
               "avg rwd:",round(mean(scores), 3), "last 10 rwd:", round(mean(scores[-10:]), 3))
+    if each_game % 100 == 0:
+        Agent.save_model("./saved_models/mwob/{}/".format(env_name))
     Agent.train()
 
   # Observe Agent after training
