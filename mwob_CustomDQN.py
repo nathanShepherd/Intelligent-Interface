@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from keras.optimizers import Adam
-from keras.models import Sequential
+from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Flatten
 from keras.layers import Dropout, Conv2D
 
@@ -90,14 +90,14 @@ class DQN:
         model.add(Conv2D(32, (3, 3), activation='relu'))
         model.add(Dropout(0.25))
 
-        #model.add(Conv2D(64, (3, 3), activation='relu'))
-        #model.add(Conv2D(64, (3, 3), activation='relu'))
-        #model.add(Dropout(0.25))
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Dropout(0.25))
 
         model.add(Flatten())
-        #model.add(Dense(50))
-        #model.add(Activation('relu'))
-        model.add(Dense(100))
+        model.add(Dense(600))
+        model.add(Activation('relu'))
+        model.add(Dense(300))
         model.add(Activation('relu'))
         model.add(Dense(50))
         model.add(Activation('relu'))
@@ -106,7 +106,8 @@ class DQN:
 
         adam = Adam(lr=self.LR)
 
-        model.compile(loss='mse', optimizer=adam,
+        model.compile(loss='mse',
+                      optimizer=adam,
                       metrics=['accuracy'])
         print(model.summary())
 
@@ -218,15 +219,12 @@ class DQN:
         self.memory.graph(num_scores)
 
     def save_model(self, location):
-        #use keras save model
-        _id = str(sum(self.memory.get_scores())/self.memory.get_capacity())[:10]
-        now = datetime.datetime.now().strftime("%b-%d_avg_score~")
-        self.model.save(location + now + _id + '.h5')
+        _id = str(sum(self.memory.get_scores())/self.memory.get_capacity())[:5]
+        now = datetime.datetime.now().strftime("%b-%d_%H:%M_weights_avg_score~")
+        self.model.save_weights(location + now + _id + '.h5')
 
     def load_model(self, name):
-        self.model = load_model(name)
-
-
+        self.model = load_weights(name)
 
 
 '''

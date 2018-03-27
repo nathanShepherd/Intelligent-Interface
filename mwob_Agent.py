@@ -155,7 +155,7 @@ class Mouse():
 
 def get_training_data(env, vel, show=False):
   mouse = Mouse(velocity=vel,
-                penalty_increment=0.01)
+                penalty_increment=0.00)
   training_data = []
 
   for episode in range(num_random_games):
@@ -278,7 +278,7 @@ goal_steps = 100#
 score_requirement = -100#0
 
 #Random games to initialize experience replay
-num_random_games = 100#1000
+num_random_games = 1#1000
 
 #Games in which actions are determined by the Agent
 num_training_games = 100*100#>1000
@@ -323,6 +323,7 @@ if __name__ == "__main__":
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
   Agent.init_model(obs_space, action_space)
+  Agent.load_model('./saved_models/mwob/TicTacToe/Mar-27_avg_score~-0.0482694.h5')
   Agent.train()
 
   print("SUCCESS!!!!")
@@ -331,8 +332,8 @@ if __name__ == "__main__":
   score_length = 1000
 
   m = Mouse(velocity=velocity,
-                penalty_increment=0.01)
-
+                penalty_increment=0)
+'''
   for each_game in range(num_training_games):
     total_reward = 0
     state = env.reset()
@@ -356,9 +357,7 @@ if __name__ == "__main__":
           x_next_crop = np.reshape(x_next_crop, (1, 210, 160, 3))
 
       reward[0] -= m.get_penalty()
-      print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
-      print(m.last_action())
-      print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
+      #print(m.last_action())
 
       Agent.store_transition(x_crop,
                              m.last_action(),
@@ -373,13 +372,14 @@ if __name__ == "__main__":
     if each_game % 1 == 0:
       if len(scores) > 1000:
         scores = scores[-1000:]
-        print("Epochs: {} | {}".format(each_game, num_training_games),
-              "Percent done:", each_game*100/num_training_games,
-              "avg rwd:",round(mean(scores), 3), "last 10 rwd:", round(mean(scores[-10:]), 3))
+      print("Epochs: {} | {}".format(each_game, num_training_games),
+            "Percent done:", each_game*100/num_training_games,
+            "avg rwd:",round(np.mean(scores), 3),
+            "last 10 rwd:", round(np.mean(scores[-10:]), 3))
     if each_game % 100 == 0:
         Agent.save_model("./saved_models/mwob/{}/".format(env_name))
     Agent.train()
-
+'''
   # Observe Agent after training
   for each_game in range(5):
       state = env.reset()
