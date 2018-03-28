@@ -16,10 +16,12 @@ from keras.layers import Dropout, Conv2D
 
 class Node:
     #constituents of skip list
-    def __init__(self, datum=None, right=None,
-                       left=None, down=None):
-        self.datum=None; self.right=None;
-        self.down =None; self.left=None;
+    def __init__(self, datum=None, right=None, left=None, down=None):
+        self.datum=None
+        self.right=None
+        self.left=None
+        self.down=None
+        
 
 class SkipList:
     #Random datastructure with efficient member functions
@@ -37,11 +39,9 @@ class SkipList:
         pass
     def find(self, value, num_greater_than_val=0):
         pass
-
     def random_sample(self, size, pivot=self.avg):
         pass
-
-
+        
 
 class Memory:
     def __init__(self, capacity):
