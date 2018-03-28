@@ -71,7 +71,7 @@ def get_obs_space(env):
 
 
 class Mouse():
-  def __init__(self, velocity, penalty_increment):
+  def __init__(self, velocity, penalty_increment=0):
     self.x_min = 10;#decrease usable area by velocity?
     self.x_max = 170
     self.y_min = 125;
@@ -230,12 +230,27 @@ def get_training_data(env, vel, show=False):
 
 
 
-def get_CustomDQN_Agent(env, action_shape, observation_space):
-  print('\n\n}{}{}}{}{}{}{}{}{}{}{}{}{}{')
-  #print(env.action_space.keys)# get all possible key events
-  #print(env.action_space.buttonmasks)# get "buttonmasks"???
-  # checkout universe/universe/spaces/vnc_action_space.py
-  # ^^^This repo provides more information about key events
+def observe_Agent(A, env, games=5):
+  m = Mouse(velocity)
+  for each_game in range(5):
+      state = env.reset()
+
+      for episode in range(goal_steps):
+          env.render()
+          x_crop= np.zeros((1, 210, 160, 3))
+          x_next_crop= np.zeros((1, 210, 160, 3))
+          if state[0] != None:
+              x = state[0]['vision']
+              x_crop = np.array(x[75:75+210, 10:10+160, :])
+              x_crop = np.reshape(x_crop, (1, 210, 160, 3))
+
+          action = [m.Q_pi(x_crop, Agent, use_policy=True) for obs in state]
+
+          state_new, reward, done, info = env.step(action)
+          #Agent.store_transition(state, action, reward, state_new, done)
+          state = state_new
+          if done: break
+  
 
 
 '''Take in coordinates on the screen, return action as a list of VNC events'''
@@ -245,6 +260,8 @@ def coord_to_event(x, y, click):
   # TODO: make actions modular with respect to the task required
   #       consider using the env name to decide which class of
   #       set of actions would make the most sense for the context
+  # Checkout: universe/universe/spaces/vnc_action_space.py
+  # ^^^This repo provides more information about key events
   action = [universe.spaces.PointerEvent(x, y, 0),
             universe.spaces.PointerEvent(x, y, click),
             universe.spaces.PointerEvent(x, y, 0)]
@@ -281,7 +298,7 @@ score_requirement = -100#0
 num_random_games = 10#1000
 
 #Games in which actions are determined by the Agent
-num_training_games = 100*10#>1000
+num_training_games = 100#>1000
 
 #Visualize the environment while agent is training
 display_training = False
@@ -295,8 +312,8 @@ velocity = 35#40
 if __name__ == "__main__":
   # automatically creates a local docker container
   env.configure(remotes=1, fps=5, vnc_driver='go',
-              vnc_kwargs={'encoding':'tight', 'compress_level': 0,
-                          'fine_quality_level': 100, 'subsample_level': 0})
+                vnc_kwargs={'encoding':'tight', 'compress_level': 0,
+                            'fine_quality_level': 100, 'subsample_level': 0})
 
   #initializes browser window
   random_game_loop(env, show=False)
@@ -313,7 +330,7 @@ if __name__ == "__main__":
   Agent = DQN(batch_size=64,#64
               memory_size=50000,
               learning_rate=0.005,
-              random_action_decay=0.999,)
+              random_action_decay=0.99,)
 
   print("Storing training data")
   for datum in training_data:
@@ -323,7 +340,7 @@ if __name__ == "__main__":
   print("%%%%%\nThe observation space is:",obs_space,"\n%%%%%")
   print("%%%%%\nThe action space is: continuous 2D\n%%%%%")
   Agent.init_model(obs_space, action_space)
-  Agent.load_model('./saved_models/mwob/TicTacToe/Mar-27_avg_score~-0.0482694.h5')
+  #Agent.load_model('./saved_models/mwob/TicTacToe/Mar-27_avg_score~-0.0482694.h5')
   Agent.train()
 
   print("SUCCESS!!!!")
@@ -334,6 +351,7 @@ if __name__ == "__main__":
   m = Mouse(velocity=velocity,
                 penalty_increment=0)
 
+  #Train agent using policy that becomes less random over time
   for each_game in range(num_training_games):
     total_reward = 0
     state = env.reset()
@@ -372,33 +390,18 @@ if __name__ == "__main__":
     if each_game % 1 == 0:
       if len(scores) > 1000:
         scores = scores[-1000:]
-      print("Epochs: {} | {}".format(each_game, num_training_games),
+      print("\n%%%%%%%%%%%%%%%%\n",
+            "Epochs: {} | {}".format(each_game, num_training_games),
             "Percent done:", each_game*100/num_training_games,
             "avg rwd:",round(np.mean(scores), 3),
-            "last 10 rwd:", round(np.mean(scores[-10:]), 3))
+            "last 10 rwd:", round(np.mean(scores[-10:]), 3),
+            "\n%%%%%%%%%%%%%%%%\n")
     if each_game % 100 == 0:
         Agent.save_model("./saved_models/mwob/{}/".format(env_name))
     Agent.train()
 
   # Observe Agent after training
-  for each_game in range(5):
-      state = env.reset()
-
-      for episode in range(goal_steps):
-          env.render()
-          x_crop= np.zeros((1, 210, 160, 3))
-          x_next_crop= np.zeros((1, 210, 160, 3))
-          if state[0] != None:
-              x = state[0]['vision']
-              x_crop = np.array(x[75:75+210, 10:10+160, :])
-              x_crop = np.reshape(x_crop, (1, 210, 160, 3))
-
-          action = [m.Q_pi(x_crop, Agent, use_policy=True) for obs in state]
-
-          state_new, reward, done, info = env.step(action)
-          #Agent.store_transition(state, action, reward, state_new, done)
-          state = state_new
-          if done: break
+  observe_Agent(Agent, env, games=5)
 
   Agent.save_model("./saved_models/mwob/{}/".format(env_name))
   Agent.display_statisics_to_console()

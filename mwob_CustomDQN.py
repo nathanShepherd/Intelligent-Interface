@@ -80,26 +80,19 @@ class DQN:
         self.observation_space = observation_space
 
         model = Sequential()
-        #model.add(Dense(20, input_shape=(1,) + observation_space))
-        # input: 100x100 images with 3 channels -> (100, 100, 3) tensors.
-
-        # this applies 32 convolution filters of size 3x3 each.
+        #32 convolution filters of size 3x3 each.
         model.add(Conv2D(32, (3, 3),
                          activation='relu',
                          input_shape=observation_space))
-        model.add(Conv2D(32, (3, 3), activation='relu'))
-        model.add(Dropout(0.25))
-
-        model.add(Conv2D(64, (3, 3), activation='relu'))
-        model.add(Conv2D(64, (3, 3), activation='relu'))
+        model.add(Conv2D(16, (3, 3), activation='relu'))
         model.add(Dropout(0.25))
 
         model.add(Flatten())
-        model.add(Dense(600))
-        model.add(Activation('relu'))
-        model.add(Dense(300))
+        model.add(Dense(50))
         model.add(Activation('relu'))
         model.add(Dense(50))
+        model.add(Activation('relu'))
+        model.add(Dense(25))
         model.add(Activation('relu'))
         model.add(Dense(nb_actions))
         model.add(Activation('linear'))
@@ -219,12 +212,12 @@ class DQN:
         self.memory.graph(num_scores)
 
     def save_model(self, location):
-        _id = str(sum(self.memory.get_scores())/self.memory.get_capacity())[:5]
+        _id = str(sum(self.memory.get_scores())/self.memory.get_capacity())[:10]
         now = datetime.datetime.now().strftime("%b-%d_%H:%M_weights_avg_score~")
         self.model.save_weights(location + now + _id + '.h5')
 
     def load_model(self, name):
-        self.model = load_weights(name)
+        self.model.load_weights(name)
 
 
 '''
