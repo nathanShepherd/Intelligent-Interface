@@ -21,27 +21,117 @@ class Node:
         self.right=None
         self.left=None
         self.down=None
-        
+
 
 class SkipList:
-    #Random datastructure with efficient member functions
+    #Randomized datastructure with efficient member functions
     #   insert O(n); delete O(n); find O(n)
     def __init__(self, capacity):
         self.head = Node()
+        self.height = 1
         self.capacity = capacity
 
+        self.size = 0
         self.avg = None
         self.stddev = None
 
-    def insert(self, datum):
-        pass
+    def insert(self, item):
+        num_ins = 1
+        while round(random.random()):
+            num_ins += 1
+
+        while self.height < num_ins + 1:
+            new_head = Node(down=self.head)
+            self.head = new_head
+            self.height += 1
+
+        above = None
+        curr = self.head
+        depth = self.height
+
+        while num_ins > 0:
+            if curr.right == None:
+                if num_ins <= depth:
+                    if above != None:
+                        curr.right = Node(left=curr, datum=item,
+                                          right=curr.right)
+                        above = curr.right
+                    else:
+                        curr.right = Node(left=curr, datum=item,
+                                          right=curr.right)
+                        above.down = curr.right
+                        above = curr.right
+                curr = curr.down
+                num_ins -= 1
+                depth -= 1
+
+            else if curr.right.datum > item:
+                if num_ins <= depth:
+                    if above != None:
+                        curr.right = Node(left=curr, datum=item,
+                                          right=curr.right)
+                        above = curr.right
+                    else:
+                        curr.right = Node(left=curr, datum=item,
+                                          right=curr.right)
+                        above.down = curr.right
+                        above = curr.right
+                curr = curr.down
+                num_ins -= 1
+                depth -= 1
+
+            else:# curr.right.datum <= item:
+                curr = curr.right
+
     def delete(self, value, num_less_than_val=0):
-        pass
+        delete_list = []
+        curr = self.head
+        depth = self.height
+        if curr.right == None or curr.right.datum > value:
+            curr = curr.down
+            depth -= 1
+
+        if curr.right.datum < value:
+            curr = curr.right
+
+        if curr.right.datum == value:
+            curr = curr.right
+            curr.left.right = curr.right
+            curr.right.left = curr.left
+            del curr
+
     def find(self, value, num_greater_than_val=0):
-        pass
+        curr = self.head
+        depth = self.height
+        while depth > 0:
+            if curr.right == None:
+                curr = curr.down
+                depth -= 1
+
+            else if curr.right.datum > value:
+                curr = curr.down
+                depth -= 1
+            else if curr.right.datum < value:
+                curr = curr.right
+
+            else if curr.right.datum == value:
+                return curr.right.datum
+        cond = depth == 0
+        cond = cond and curr.left.datum < value
+        cond = cond and curr.right.datum > value
+        if cond:
+            return False
+        else:
+            return "NOT FOUND"
+
     def random_sample(self, size, pivot=self.avg):
+        '''
+        generate random number between pivot and max
+        with p[0.5] find and add number to out list
+        return list when len(list) == size
+        '''
         pass
-        
+
 
 class Memory:
     def __init__(self, capacity):
