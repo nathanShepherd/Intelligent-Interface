@@ -14,6 +14,35 @@ from keras.models import Sequential, load_model
 from keras.layers import Dense, Activation, Flatten
 from keras.layers import Dropout, Conv2D
 
+class Node:
+    #constituents of skip list
+    def __init__(self, datum=None, right=None,
+                       left=None, down=None):
+        self.datum=None; self.right=None;
+        self.down =None; self.left=None;
+
+class SkipList:
+    #Random datastructure with efficient member functions
+    #   insert O(n); delete O(n); find O(n)
+    def __init__(self, capacity):
+        self.head = Node()
+        self.capacity = capacity
+
+        self.avg = None
+        self.stddev = None
+
+    def insert(self, datum):
+        pass
+    def delete(self, value, num_less_than_val=0):
+        pass
+    def find(self, value, num_greater_than_val=0):
+        pass
+
+    def random_sample(self, size, pivot=self.avg):
+        pass
+
+
+
 class Memory:
     def __init__(self, capacity):
         self.capacity = capacity
@@ -25,6 +54,8 @@ class Memory:
 
         self.container.append([state, action, reward, state_next, done])
 
+    '''return random sample of elements greater than avg'''
+    '''    or greater than one stddev below the mean    '''
     def get_sample(self, size):
         return random.sample(self.container, size)
 
