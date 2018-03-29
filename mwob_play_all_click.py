@@ -12,6 +12,7 @@ import numpy as np
 
 import time
 import random
+import datetime
 from mwob_CustomDQN import DQN
 
 def observe_and_take_random_action(obs):
@@ -236,7 +237,7 @@ def observe_Agent(A, env, games=5):
       state = env.reset()
 
       for episode in range(goal_steps):
-          env.render()
+          #env.render()
           x_crop= np.zeros((1, 210, 160, 3))
           x_next_crop= np.zeros((1, 210, 160, 3))
           if state[0] != None:
@@ -244,7 +245,7 @@ def observe_Agent(A, env, games=5):
               x_crop = np.array(x[75:75+210, 10:10+160, :])
               x_crop = np.reshape(x_crop, (1, 210, 160, 3))
 
-          action = [m.Q_pi(x_crop, Agent, use_policy=True) for obs in state]
+          action = [m.Q_pi(x_crop, A, use_policy=True) for obs in state]
 
           state_new, reward, done, info = env.step(action)
           #Agent.store_transition(state, action, reward, state_new, done)
@@ -283,77 +284,7 @@ def random_game_loop(env, show=False):
       if time.time() - start_time > 25:#30
         break
 
-#~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
-
-#initialize game environment
-#   ClickShape - Hard (will end game if click in wrong posotion)
-#   ClickButton - TBD (will end game if click wrong button)
-#   TicTacToe - TBD (seems easy enough to play this game at least)
-click_games = ['BisectAngle',
-'ChaseCircle',
-'ChooseDate',
-'ChooseList',
-'CircleCenter',
-'ClickButton',
-'ClickButtonSequence',
-'ClickCheckboxes',
-'ClickCollapsible',
-'ClickCollapsible2',
-'ClickColor',
-'ClickDialog',
-'ClickDialog2',
-'ClickLink',
-'ClickMenu2',
-'ClickOption',
-'ClickPie',
-'ClickShades',
-'ClickShape',
-'ClickTab',
-'ClickTab2',
-'ClickTest',
-'ClickTest2',
-'ClickWidget',
-'CountShape',
-'CountSides',
-'FindMidpoint',
-'FocusText',
-'FocusText2',
-'GridCoordinate',
-'GuessNumber',
-'IdentifyShape',
-'NavigateTree',
-'NumberCheckboxes',
-'RightAngle',
-'SimonSays',
-'TicTacToe',
-'UseColorwheel',
-'UseColorwheel2',
-'UseSlider',
-'UseSlider2',
-'UseSpinner',
-]
-env = None
-goal_steps = 100#
-score_requirement = -100#0
-
-#Random games to initialize experience replay
-num_random_games = 10#1000
-
-#Games in which actions are determined by the Agent
-num_training_games = 100#>1000
-
-#Visualize the environment while agent is training
-display_training = False
-
-# (left, right, up, down, click) for Click games
-action_space = 5
-velocity = 30#40
-
-#TODO: feed instructions through vector space model and train LSTM/CNN/NN
-
 def play_game(env_name):
-  if env != None:
-        del env
   env = gym.make('wob.mini.{}-v0'.format(env_name))
 
   # automatically creates a local docker container
@@ -373,7 +304,7 @@ def play_game(env_name):
 
   initial_observation = env.reset()
 
-  Agent = DQN(batch_size=64,#64
+  Agent = DQN(batch_size=1,#64
               memory_size=50000,
               learning_rate=0.005,
               random_action_decay=0.99,)
@@ -446,9 +377,91 @@ def play_game(env_name):
         Agent.save_model("./saved_models/mwob/{}/".format(env_name))
     Agent.train()
 
-  # Observe Agent after training
-  observe_Agent(Agent, env, games=5)
+  scores = Agent.memory.get_scores()
+  if len(scores) > 1000:
+    scores = scores[-1000]
+  _id = str(sum(scores)/len(scores))[:10]
+  now = datetime.datetime.now().strftime("%b-%d_%H:%M_avg_score~")
 
-  Agent.save_model("./saved_models/mwob/{}/".format(env_name))
+  # TODO: Impliment saved_scores dir as .gzip archive to conserve space
+  f = open("./saved_scores/mwob/{}/{}{}.txt".format(env_name,now,_id),'w')
+  f.write( str(scores) )
+  f.close()
+
+  # Observe Agent after training
+  #observe_Agent(Agent, env, games=5)
+
+  #Agent.save_model("./saved_models/mwob/{}/".format(env_name))
   Agent.display_statisics_to_console()
   print("Score Requirement:",score_requirement)
+
+#~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
+
+#initialize game environment
+#   ClickShape - Hard (will end game if click in wrong posotion)
+#   ClickButton - TBD (will end game if click wrong button)
+#   TicTacToe - TBD (seems easy enough to play this game at least)
+click_games = ['BisectAngle',
+'ChaseCircle',
+'ChooseDate',
+'ChooseList',
+'CircleCenter',
+'ClickButton',
+'ClickButtonSequence',
+'ClickCheckboxes',
+'ClickCollapsible',
+'ClickCollapsible2',
+'ClickColor',
+'ClickDialog',
+'ClickDialog2',
+'ClickLink',
+'ClickMenu2',
+'ClickOption',
+'ClickPie',
+'ClickShades',
+'ClickShape',
+'ClickTab',
+'ClickTab2',
+'ClickTest',
+'ClickTest2',
+'ClickWidget',
+'CountShape',
+'CountSides',
+'FindMidpoint',
+'FocusText',
+'FocusText2',
+'GridCoordinate',
+'GuessNumber',
+'IdentifyShape',
+'NavigateTree',
+'NumberCheckboxes',
+'RightAngle',
+'SimonSays',
+'TicTacToe',
+'UseColorwheel',
+'UseColorwheel2',
+'UseSlider',
+'UseSlider2',
+'UseSpinner',
+]
+env = None
+goal_steps = 100#
+score_requirement = -100#0
+
+#Random games to initialize experience replay
+num_random_games = 1#1000
+
+#Games in which actions are determined by the Agent
+num_training_games = 1#>1000
+
+#Visualize the environment while agent is training
+display_training = False
+
+# (left, right, up, down, click) for Click games
+action_space = 5
+velocity = 35#40
+
+#TODO: feed instructions through vector space model and train LSTM/CNN/NN
+if __name__ == "__main__":
+    for game in click_games:
+        play_game(game)
