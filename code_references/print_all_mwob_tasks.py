@@ -53,7 +53,16 @@ orig = orig.split('\n')
 cleaned = []
 for t in orig:
     out = t.split(':')
-    cleaned.append(out[0])
-    
+    #cleaned.append(out[0])
+    out = out[0].split('-')
+    words = ""
+    for w in out:
+        for i, char in enumerate(w):
+            if i == 0:
+                words += char.upper()
+            else:
+                words += char
+    cleaned.append(words)
+
 for t in cleaned:
-    print(t, end='\n')
+    print("'{}',".format(t), end='\n')
