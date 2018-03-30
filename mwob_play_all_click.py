@@ -395,64 +395,52 @@ def play_game(env_name):
   Agent.display_statisics_to_console()
   print("Score Requirement:",score_requirement)
 
+def print_game_scores(games):
+      #get a list of all scores
+    all_scores = glob.glob("saved_scores/mwob/*/Mar*")
+
+    sort = []
+    for score in all_scores:
+      p = score.split("/")
+      name = p[-2]
+      score = p[-1].split("~")[-1]
+      score = score.split(".")[0]+"."+score.split(".")[1]
+      _date = p[-1].split("~")[0].split("_")[0]
+      _time = p[-1].split("~")[0].split("_")[1]
+      if name in games:
+        sort.append([_date+"_"+_time,name, score])
+
+    sort = sorted(sort, key=itemgetter(2))
+    for score in sort:
+      print(score[0]+"\t"+score[1]+"\t\t"+score[2])
+
+    '''TOP Performing random game scores '''
+    '''
+    ClickWidget	         0.07540625
+    ChaseCircle	         0.00574
+    NumberCheckboxes	-0.0051282
+    ClickTab	        -0.010012
+    FocusText2	        -0.0169837
+    ClickCollapsible2	-0.0175438
+    ClickCheckboxes	-0.0188679
+    ClickTab2	        -0.0192307
+    '''  
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
 #initialize game environment
 #   ClickShape - Hard (will end game if click in wrong posotion)
 #   ClickButton - TBD (will end game if click wrong button)
 #   TicTacToe - TBD (seems easy enough to play this game at least)
-click_games = ['BisectAngle',
-'ChaseCircle',
-'ChooseDate',
-'ChooseList',
-'CircleCenter',
-'ClickButton',
-'ClickButtonSequence',
-'ClickCheckboxes',
-'ClickCollapsible',
-'ClickCollapsible2',
-'ClickColor',
-'ClickDialog',
-'ClickDialog2',
-'ClickLink',
-'ClickMenu2',
-'ClickOption',
-'ClickPie',
-'ClickShades',
-'ClickShape',
-'ClickTab',
-'ClickTab2',
-'ClickTest',
-'ClickTest2',
-'ClickWidget',
-'CountShape',
-'CountSides',
-'FindMidpoint',
-'FocusText',
-'FocusText2',
-'GridCoordinate',
-'GuessNumber',
-'IdentifyShape',
-'NavigateTree',
-'NumberCheckboxes',
-'RightAngle',
-'SimonSays',
-'TicTacToe',
-'UseColorwheel',
-'UseColorwheel2',
-'UseSlider',
-'UseSlider2',
-'UseSpinner',
-]
+
 env = None
 goal_steps = 100#
 score_requirement = -100#0
 
 #Random games to initialize experience replay
-num_random_games = 1#1000
+num_random_games = 50#1000
 
 #Games in which actions are determined by the Agent
-num_training_games = 1#>1000
+num_training_games = 25#>1000
 
 #Visualize the environment while agent is training
 display_training = False
@@ -461,7 +449,39 @@ display_training = False
 action_space = 5
 velocity = 35#40
 
+import glob
+from operator import itemgetter
+from click_game_names import click_games# vector of game name strings
 #TODO: feed instructions through vector space model and train LSTM/CNN/NN
 if __name__ == "__main__":
+
+    # Train games that perform randomly for more epochs
+    click_games = ["ClickWidget","ChaseCircle",
+                   "NumberCheckboxes","ClickTab",
+                   "FocusText2","ClickCollapsible2",
+                   "ClickCheckboxes", "ClickTab2"]
+    print_game_scores(click_games)
+    
     for game in click_games:
-        play_game(game)
+        try:
+            play_game(game)
+            
+        except Exception as e:
+            print(e)
+            now = datetime.datetime.now().strftime("%b-%d_%H:%M")
+            f = open("./error_logs/ErrorLog_"+now+".txt",'w')
+            f.write( str(e) )
+            f.close()
+
+            try:
+                play_game(game)
+            
+            except Exception as e:
+                print(e)
+                now = datetime.datetime.now().strftime("%b-%d_%H:%M")
+                f = open("./error_logs/ErrorLog_"+now+".txt",'w')
+                f.write( str(e) )
+                f.close()
+
+    print_game_scores(click_games)
+    
