@@ -43,3 +43,5 @@ python gym_environment_tests/LunarLander/lunarLander-CustomDQN.py
 
 - Augment memory for _efficient_ and _prioritized_ experience replay
 
+- Debugg DQN and impliment (Double Q-Learning)[https://jaromiru.com/2016/10/12/lets-make-a-dqn-debugging/]
+
