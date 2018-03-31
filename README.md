@@ -41,7 +41,7 @@ python gym_environment_tests/LunarLander/lunarLander-CustomDQN.py
 
 - Use a CRF or RNN/LSTM to help estimate the Q-Function relative to the current point in time
 
-- Augment memory for _efficient_ and _prioritized_ experience replay
+- Augment memory for [_efficient_ and _prioritized_](https://arxiv.org/abs/1511.05952) experience replay
 
-- Debugg DQN and impliment [Double Q-Learning](https://jaromiru.com/2016/10/12/lets-make-a-dqn-debugging/)
-
+- [Debugg DQN](https://jaromiru.com/2016/10/12/lets-make-a-dqn-debugging/)
+ and impliment [Double Q-Learning](https://arxiv.org/abs/1509.06461)
