@@ -83,6 +83,7 @@ class DQN:
         
         model = Sequential()
         model.add(Dense(64, input_shape=(1,) + observation_space))
+        model.add(Dense(16))
         model.add(Flatten())
         model.add(Dense(nb_actions))
         model.add(Activation('linear'))

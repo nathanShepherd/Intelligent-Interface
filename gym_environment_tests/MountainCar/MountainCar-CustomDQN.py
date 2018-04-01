@@ -64,7 +64,7 @@ def create_random_samples(init_obs):
 
     training_data_save = np.array(training_data)
     #np.save('lunar_lander_training_data.npy',training_data_save)
-    
+    print('Max accepted score:',max(accepted_scores))
     print('Average accepted score:',mean(accepted_scores))
     print('Median score for accepted scores:',median(accepted_scores))
     print("Number of acccepted scores:", len(accepted_scores))
@@ -82,23 +82,23 @@ env = gym.make('MountainCarMyEasyVersion-v0')
 #env = gym.make("MountainCar-v0")
 goal_steps =  500#2000
 score_requirement = -10#-1.5
-initial_games = 1000#10000, 250 adequite
+initial_games = 1000#1000 for "quick" convergance
 
 num_training_games = 1000#>1000
 action_space = 3
 
 reward_discount = 50
 
-observe_random = False
+observe_random = True
 observe_training = False
 
 if __name__ == "__main__":
     Agent = DQN(batch_size=64,#64
                 memory_size=50000,
-                learning_rate=0.05,
+                learning_rate=0.005,
 
                 min_action_chance=0.2,
-                random_action_decay=0.9999,
+                random_action_decay=0.999,#0.999
                 )
                 #epsilon_max=0.9,
                 #random_action_decay=1000,
