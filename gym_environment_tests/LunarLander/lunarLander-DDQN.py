@@ -98,6 +98,15 @@ action_space = 4
 
 reward_discount = 50
 
+'''
+Agent attains full control of the LunarLander
+    after ~650 iterations. However, (with DDQN & 
+    epsilon_min == 0.2) Agent fails to discover
+    the greatest reward resulting from landing
+    within the flags. Instead, the Agent avoids
+    tipping over and touching the ground
+'''
+
 if __name__ == "__main__":
     Agent = DQN(batch_size=64,#64
                 memory_size=50000,
@@ -147,16 +156,15 @@ if __name__ == "__main__":
             if done: break
             
         scores.append(total_reward)
-        avg_score = (avg_score + total_reward)/2
 
         if each_game % 1 == 0:
-            if len(scores) > 1000:
+            if len(scores) > score_length:
                 scores = scores[-1000:]
             print("Epochs: {} | {}".format(each_game, num_training_games),
                   "%:", each_game*100/num_training_games,
                   "Eplison:", round(Agent.epsilon, 5),
                   "avg frame rwd:",round(mean(Agent.memory.get_scores()), 3),
-                  "last episode rwd:", round(mean(scores[-75:]), 3))
+                  "last 99 ep rwd:", round(mean(scores[-99:]), 3))
         
 
     observe_agent(Agent, env)
