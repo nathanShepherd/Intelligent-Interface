@@ -9,7 +9,7 @@ from collections import Counter
 
 import sys
 try:
-    from DDQN_April_1 import DQN
+    from DDQN_April_10 import DQN
 except ImportError as e:
     print(e)
     sys.path.append('./../../')
@@ -73,7 +73,7 @@ def create_random_samples(init_obs):
 
 def observe_agent(A, env):
     # Observe Agent after training
-    for each_game in range(5):
+    for each_game in range(15):
         state = env.reset()
         for episode in range(goal_steps):
             env.render()
@@ -88,15 +88,15 @@ def observe_agent(A, env):
 
 #~~~~~~~~~~~[  MAIN  ]~~~~~~~~~~~#
 
-env = gym.make("LunarLander-v2")
-goal_steps = 900#2000
+env = gym.make("CartPole-v0")
+goal_steps = 2000#2000
 score_requirement = -1.5#-1.5
 initial_games = 250#10000, 250
 
-num_training_games = 300#>1000
-action_space = 4
+num_training_games = 1000#>1000
+action_space = 2
 
-reward_discount = 50
+reward_discount = 1
 
 observe_training = False
 
@@ -118,9 +118,10 @@ Parameters: Epsilon_min == 0.2
 if __name__ == "__main__":
     Agent = DQN(batch_size=64,#64
                 memory_size=50000,
-                learning_rate=0.005,
-                replace_target_iter=2000,
-
+                learning_rate=0.05,
+                replace_target_iter=1000,#2000
+                
+                random_numerator=1000,
                 random_action_decay=0.99,
                 random_action_chance=0.1,
                 )
@@ -134,11 +135,10 @@ if __name__ == "__main__":
         Agent.store_transition(s, a, r, s_, done)
 
     Agent.init_model(training_data[0][0].shape, action_space,
-                     hidden= [50, 50, 100, 25])
-    Agent.load_model("./../../saved_models/LunarLander/Apr-05_avg_score~-0.4801984.h5")
+                     hidden= [64])
+    #Agent.load_model("./../../saved_models/CartPole/Apr-10_avg_score~0.20834.h5")
+    #observe_agent(Agent, env)
     #Agent.train()
-    
-    observe_agent(Agent, env)
     
     score_length = 100000
     scores = []
@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
     observe_agent(Agent, env)
 
-    Agent.save_model("./../../saved_models/LunarLander/")
+    Agent.save_model("./../../saved_models/CartPole/")
     Agent.display_statisics_to_console()
     print("Score Requirement:",score_requirement)
     Agent.memory.graph()

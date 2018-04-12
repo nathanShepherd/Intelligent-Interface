@@ -64,6 +64,8 @@ class DQN:
             random_action_chance=0.9,
             random_action_decay=0.99,#depreciated
 
+            random_numerator=10000,
+
             replace_target_iter=2000,
 
             batch_size=32,
@@ -78,6 +80,7 @@ class DQN:
         self.LR = learning_rate
         self.epsilon = random_action_chance
         self.random_action_decay = random_action_decay
+        self.random_numerator= random_numerator
 
         self.replace_t_iter = replace_target_iter
 
@@ -174,7 +177,7 @@ class DQN:
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.random_action_decay
         '''
-        self.epsilon = min([0.9, (10000/self.counter)+self.epsilon_min])
+        self.epsilon = min([1, (self.random_numerator/self.counter)+self.epsilon_min])
         self.counter += 1
         if self.counter % self.replace_t_iter == 0:#replace weights of evaluation net
             print("Updating evaluation network")
