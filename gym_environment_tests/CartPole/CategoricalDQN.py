@@ -46,6 +46,7 @@ def init_Q(obs_space_int, act_space_int):
     states = []
     for i in range(10**obs_space_int):
         #populates state with left padded numbers as str
+        #print(str(i).zfill(obs_space_int))
         states.append(str(i).zfill(obs_space_int))
     # TODO: custom 0000 padding on left side
         

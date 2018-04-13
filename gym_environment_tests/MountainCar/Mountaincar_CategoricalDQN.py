@@ -19,23 +19,33 @@ def max_dict(d):
             max_key = key
     return max_key, max_val
 
-def to_categorical(obs, depth):
+def init_bins(num_bins=4,#observation_space
+                depth=10, limits=[2, 2, 0.418, 5]):
+  # obs[0] -> cart position --- -4.8 - 4.8
+  # obs[1] -> cart velocity --- -inf - inf
+  # obs[2] -> pole angle    --- -0.418 - 0.418
+  # obs[3] -> pole velocity --- -inf - inf
+  bins = np.zeros((num_bins, depth))
+  for i in range(num_bins):
+      bins[i] = np.linspace(-limits[i], limits[i], depth)
+
+  return bins
+
+def to_categorical(obs, bins):
     # distrubute each elem in state to the index of the closest bin
-    for i in range(len(obs)):
-        if obs[i] < 0.01 and obs[i] > -0.01:
-            obs[i] = 0
-        else:
-            obs[i] = round(obs[i], depth)
+    state = np.zeros(len(bins))
+    for i in range(len(bins)):
+        state[i] = np.digitize(obs[i]*100, bins[i])
+    return state
             
-    return [round(num, depth) for num in obs]
+    #return [round(num, depth) for num in obs]
         
 def get_state_as_string(state):
     return ''.join(str(elem)+"|" for elem in state)[:-1]
 
-def init_Q(obs_depth, act_space_int):
+def init_Q(bins, act_space_int):
     states = []
-    for i in range(-10**obs_depth, 10**obs_depth):
-        #populates state with left padded numbers as str
+    for i in range(-10**len(bins), 10**len(bins)):
         states.append(str(i))
         
     Q = {}
@@ -45,13 +55,13 @@ def init_Q(obs_depth, act_space_int):
             Q[state][action] = 0
     return Q
 
-def play_episode(depth, Q, act_space, epsilon=.2, viz=False):
+def play_episode(bins, Q, act_space, epsilon=.2, viz=False):
     observation = env.reset()
     total_reward = 0
     terminal = False
     num_frames = 0
 
-    state = get_state_as_string(to_categorical(observation, depth))
+    state = get_state_as_string(to_categorical(observation, bins))
 
     while not terminal:
         if viz: env.render()
@@ -60,7 +70,7 @@ def play_episode(depth, Q, act_space, epsilon=.2, viz=False):
                 Q[state] = {}
                 for i in range(action_space):
                     Q[state][i] = 0
-                    
+        
         if num_frames > 150: epsilon = 0
         #print(observation, state)
         if random.random() < epsilon:
@@ -72,7 +82,7 @@ def play_episode(depth, Q, act_space, epsilon=.2, viz=False):
             action = max_dict(Q[state])[0]
         
         observation, reward, terminal, info = env.step(action)
-        state_next = get_state_as_string(to_categorical(observation, depth))
+        state_next = get_state_as_string(to_categorical(observation, bins))
 
         '''
         if terminal:
@@ -80,27 +90,28 @@ def play_episode(depth, Q, act_space, epsilon=.2, viz=False):
             print(int(10*observation[0]))
             reward += int(10*observation[0]) #position of cart
         '''
-        if terminal and observation[0] > 0.3:
-            reward += 500 + abs(25*observation[0])
-        if terminal and abs(observation[0]) > 0.3:
-            #print(state,"\t",observation, end="\t")
-            reward += 400 + abs(10*observation[0])
-            #print(reward)
+        reward /= 10
+        if terminal:
+            if abs(observation[0]) > 0.3:
+                #print(state,"\t",observation, end="\t")
+                reward += 300 + abs(10*observation[0])
+                #print(reward,">>>>>")
             
-        if terminal and abs(observation[0]) < 0.3:
-            #print(state,"\t",observation, end="\t")
-            reward += -100
-            #print(reward, ">>>>>")
+            elif abs(observation[0]) < 0.3:
+                #print(state,"\t",observation, end="\t")
+                reward += -np.log(abs(observation[0]))
+                #print(reward, "<<<<<")
 
         total_reward += reward
         
         #if terminal and num_frames < 200:
         #    reward = -300
+        
         if state_next not in Q:
             Q[state_next] = {}
             for i in range(action_space):
                 Q[state_next][i] = 0
-                
+        
         action_next, reward_next = max_dict(Q[state_next])
         Q[state][action] += ALPHA*(reward + GAMMA * reward_next - Q[state][action])
               
@@ -110,15 +121,15 @@ def play_episode(depth, Q, act_space, epsilon=.2, viz=False):
 
     return total_reward, num_frames
 
-def train(depth=5, act_space=None,epochs=2000, obs=False, Q=False):
-    if not Q: Q = init_Q(depth, act_space)
+def train(bins, act_space=None,epochs=2000, obs=False, Q=False):
+    if not Q: Q = init_Q(bins, act_space)
 
     stacked_frames = []
     rewards = [0]
     for ep in range(epochs):
         epsilon = np.tanh(-ep/(epochs/2))+ 1
 
-        ep_reward, num_frames = play_episode(depth, Q, act_space,epsilon, viz=obs)
+        ep_reward, num_frames = play_episode(bins, Q, act_space,epsilon, viz=obs)
         if ep % 100 == 0:
             print("Ep: {} | {}".format(ep, epochs),
                   "%:", round(ep*100/epochs, 2),
@@ -160,7 +171,7 @@ def play_random():
 gym.envs.register(
     id='MountainCarMyEasyVersion-v0',
     entry_point='gym.envs.classic_control:MountainCarEnv',
-    max_episode_steps=400,      # MountainCar-v0 uses 200
+    max_episode_steps=1000,      # MountainCar-v0 uses 200
     reward_threshold=-110.0,
 )
 env = gym.make('MountainCarMyEasyVersion-v0')
@@ -171,14 +182,13 @@ GAMMA = 0.9
 EPOCHS = 2000
 
 obs_space = 2
-STATE_DEPTH = 4# < 8
 action_space = env.action_space.n
 
 if __name__ == "__main__":
-    #bins = init_bins(num_bins=obs_space,depth=10, limits=[2, 2])
+    bins = init_bins(num_bins=obs_space, depth=10, limits=[1.2, 0.07])
      
 
-    episode_rewards, _, Q = train(depth=STATE_DEPTH,act_space=action_space,
+    episode_rewards, _, Q = train(bins,act_space=action_space,
                                   epochs = EPOCHS, obs=observe_training)
     
     random_rwds = [play_random() for ep in range(EPOCHS)]
