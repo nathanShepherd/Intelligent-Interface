@@ -173,7 +173,7 @@ observe_training = False
 ALPHA = 0.01
 GAMMA = 0.9
 
-EPOCHS = 5000
+EPOCHS = 10000
 
 obs_space = 8
 # obs[0] == pos_x
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     
     #random_rwds = [play_random() for ep in range(EPOCHS)]
 
-    plt.title("Average Reward with Q-Learning By Episode (CartPole)")
+    plt.title("Average Reward with Q-Learning By Episode (LunarLander)")
     plot_running_avg(episode_rewards)
     #plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
 

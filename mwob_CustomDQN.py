@@ -182,9 +182,9 @@ class DQN:
                 #TODO: verify the cause of action being greater than action_space
                 if action >= self.action_space:
                     print("ERROR: action greater than action space\nAction:",action)
-                    targets[i][action % self.action_space] = reward + self.gamma * np.amax(Q_action)
+                    targets[i][action % self.action_space] = reward + self.gamma * np.amax(Q_action) - targets[i][action]
                 else:
-                    targets[i][action] = reward + self.gamma * np.max(Q_action)
+                    targets[i][action] = reward + self.gamma * np.max(Q_action) - targets[i][action]
 
         #add another dimension to state observation (shape[0] <-- self.batch_size)
         #inputs = np.stack((inputs,), axis=1)

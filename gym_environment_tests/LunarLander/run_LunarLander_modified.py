@@ -16,8 +16,21 @@ import gym
 from gym import wrappers
 
 import sys
+import numpy as np
+import matplotlib.pyplot as plt
 sys.path.append('./../../code_references')
 from DuelingDQNPrioritizedReplay import DuelingDQNPrioritizedReplay
+
+def plot_running_avg(reward_arr):
+    N = len(reward_arr)
+    #init unitialized array
+    # (faster than np.zeros)
+    running_avg = np.empty(N)
+
+    for t in range(100, N):
+        running_avg[t] = np.mean(reward_arr[t-100: t+1])
+
+    plt.plot(running_avg, color="purple", label="Q-Learning Running Average")
 
 env = gym.make('LunarLander-v2')
 # env = env.unwrapped
@@ -51,6 +64,8 @@ RL = DuelingDQNPrioritizedReplay(
 total_steps = 0
 running_r = 0
 r_scale = 100
+
+episode_rwds = []
 for i_episode in range(MAX_EPISODES):
     state = env.reset()  # (coord_x, coord_y, vel_x, vel_y, angle, angular_vel, l_leg_on_ground, r_leg_on_ground)
     ep_r = 0
@@ -76,4 +91,25 @@ for i_episode in range(MAX_EPISODES):
 
         state = state_next
         total_steps += 1
+
+    episode_rwds.append(ep_r)
+
+plt.title("Average Reward with DDQN and Prioritized Replay (LunarLander)")
+plt.xlabel('Training Time (episodes)', fontsize=18)
+plt.ylabel('Average Reward per Episode', fontsize=16)
+plot_running_avg(episode_rwds)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
 
