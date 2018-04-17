@@ -158,7 +158,7 @@ observe_training = False
 ALPHA = 0.01
 GAMMA = 0.9
 
-EPOCHS = 10000
+EPOCHS = 6000
 
 obs_space = 4
 action_space = env.action_space.n
