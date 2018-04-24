@@ -11,9 +11,9 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-from keras.optimizers import Adam
-from keras.models import Sequential, load_model
-from keras.layers import Dense, Activation, Flatten
+from sklearn import tree, svm
+from sklearn.linear_model import Perceptron
+from sklearn.naive_bayes import GaussianNB, MultinomialNB
 
 def max_dict(d):
     max_val = float('-inf')
@@ -34,34 +34,24 @@ class DQN:
 
         self.LR = 0.05
         self.num_episodes = 0
-        self.update_frequency = 100
-        self.define_model(np.array(observation))
+        self.update_frequency = REPLACE_ITER
+        self.define_model()
 
     def init_Q_matrix(self, obs):
         assert(len(obs)==self.obs_space)
         self.Q = {}
         self.find(''.join(str(int(elem)) for elem in self.digitize(obs)))
 
-    def define_model(self, example, hidden=[128, 256, 512, 256, 64]):
-        #TODO: Add regularization?
-        model = Sequential()
-        model.add(Dense(hidden[0], input_shape=(1,) + example.shape))
-        #model.add(Flatten())
+    def define_model(self):
+        #for state->action classification
+        #self.model = tree.DecisionTreeClassifier()#avg 100% after 100 epochs
 
-        for i in range(1, len(hidden)):
-            model.add(Dense(hidden[i]))#50, 100, 50
-            model.add(Activation('relu'))
-
-        model.add(Dense(self.num_actions))
-        model.add(Activation('linear'))
-
-        adam = Adam(lr=self.LR)
-
-        model.compile(loss='mse', optimizer=adam,
-                      metrics=['accuracy'])
-        print(model.summary())
-
-        self.model = model
+        #Kernals: 'linear', 'poly', 'rbf', 'sigmoid'
+        self.model = svm.SVC(C=1.0, kernel='rbf', degree=3)#avg 45% after 1000 epochs
+        
+        #self.model = GaussianNB()#avg 35% after 1000 epochs
+        #self.model = Perceptron()#avg 29% after 1000 epochs
+        
 
     def find(self, state_string):
         try:
@@ -90,8 +80,9 @@ class DQN:
         action = self.get_action(state)
         reward_next = self.evaluate_utility(state_next)
 
-        state_value += ALPHA*(reward + GAMMA * reward_next - state_value)
-
+        #state_value += ALPHA*(reward + GAMMA * reward_next - state_value)
+        state_value += np.tanh(reward + GAMMA * reward_next - state_value)
+        
         state = ''.join(str(int(elem)) for elem in self.digitize(state))
         self.Q[state][action] = state_value
 
@@ -107,7 +98,9 @@ class DQN:
             
         _max = max(data)
         _min = min(data)
-        diff = _max-_min
+        if _max != _min:
+            diff = _max-_min
+        else: diff = 1
         #rescale state
         for i in range(len(data)):
             data[i] = (data[i] - _min) / diff
@@ -119,56 +112,45 @@ class DQN:
 
     def replace_rewards(self):
         self.num_episodes += 1
-        if self.num_episodes % 100 == 0:
+        if self.num_episodes % self.update_frequency == 0:
             batch_size = len(self.Q)
             states = np.zeros((batch_size, self.obs_space))
-            print(states.shape)
-            rewards = np.zeros((batch_size, self.num_actions))
-            idx = -1
+            actions = np.zeros((batch_size))
             
             print("Updating", len(self.Q),
-            "state<&>reward pairs with a Neural Network")
-            for state, act_dict in self.Q.items():
+            "state:reward pairs using a Support Vector Machine")
+            for idx, state in enumerate(self.Q.keys()):
                 #normalize states and rewards as vector
-                #TODO: Try training without rescaling the reward???
-                s = np.zeros((1, self.obs_space))
-                s[0] = self.preprocess([int(digit) for digit in state])
+                states[idx] = [int(digit) for digit in state]
+                #print(state, states[idx])
+                actions[idx] = max_dict( self.Q[state] )[0]
 
-                r = np.zeros((1, self.num_actions))
-                r[0] = self.preprocess([act_dict[i] for i in range(self.num_actions)])
-
-                state = s; reward = r;
-                states[idx] = state; rewards[idx] = reward; idx += 1
-
-            states = np.expand_dims(states, axis=1)
-            print(states.shape)
-            self.model.fit(states, rewards, epochs=1, verbose=0)
+            actions.reshape(1, -1); states.reshape(1, -1)
+            #print("States_Shape:", states.shape)
+            self.model.fit(states, actions)
 
             d = {}
-            for k in random.sample(list(self.Q), min(len(self.Q), 1000)):
+            for k in random.sample(list(self.Q), len(self.Q)):#min(len(self.Q), 1000)): 
                 d[k] = self.Q[k]
 
-            scores = 0; num_s = 0;
-            for state, act_dict in d.items():
-                #normalize states and rewards as vector
-                #TODO: Try training without rescaling the reward???
-                s = np.zeros((1, 1, self.obs_space))
-                s[0][0] = self.preprocess([int(digit) for digit in state])
+            scores = 0; num_s = len(d);
+            for state in d.keys():
+                #evaluate model accuracy
+                x = [[int(digit) for digit in state]]
+                y = max_dict( self.Q[state] )[0]
 
-                r = np.zeros((1, 1, self.num_actions))
-                r[0][0] = self.preprocess([act_dict[i] for i in range(self.num_actions)])
+                pred = self.model.predict(x)
+                if pred == y:
+                    scores += 1
 
-                state = s; reward = r;
-
-                #compare max of pred to max of act_dict
-                pred = self.model.predict(state)
-                #print(pred)
-                
-                scores += self.model.evaluate(state, reward, verbose=0)[-1]
-                num_s += 1
-
-                #states[idx] = state; rewards[idx] = reward
-                #idx += 1
+                #replacing acts with preds
+                    for action in range(self.num_actions):
+                            if action == pred:
+                                self.Q[state][action] = 1
+                            else:
+                                self.Q[state][action] = 0    
+                    
+        
             print("Accuracy of model: {}%".format(round(scores*100/num_s, 3)))
                 
             #states= np.expand_dims(states, axis = 0)
@@ -216,7 +198,7 @@ class DQN:
                   "STDDEV:", round(np.std(keys), 3), "Count:" , len(keys))
 
 
-def play_episode(agent, act_space, epsilon=.2, viz=False):
+def play_episode(agent, epsilon=.2, viz=False):
     state = env.reset()
     total_reward = 0
     terminal = False
@@ -266,24 +248,29 @@ def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
     stacked_frames = []
     #TODO: Plot reward averages
     rewards = [0]
+    d_dt = 0
     for ep in range(epochs):
         epsilon = max(EPSILON_MIN, np.tanh(-ep/(epochs/2))+ 1)
 
-        ep_reward, num_frames = play_episode(agent, act_space, epsilon, viz=obs)
+        ep_reward, num_frames = play_episode(agent, epsilon, viz=obs)
         if ep % 100 == 0:
+            avg_rwd = round(np.mean(rewards),3)
+            d_dt = round(abs(avg_rwd) - abs(d_dt), 2)
             print("Ep: {} | {}".format(ep, epochs),
                   "%:", round(ep*100/epochs, 2),
-                  "Epsilon:", round(epsilon, 4),
-                  "Avg rwd:", round(np.mean(rewards),3),
-                  "Ep rwd:", round(ep_reward, 3))
+                  "Eps:", round(epsilon, 4),
+                  "Avg rwd:", avg_rwd,
+                  "Ep rwd:", int(ep_reward),
+                  "d_dt:", d_dt)
 
         stacked_frames.append(num_frames)
         rewards.append(ep_reward)
+        d_dt = round(avg_rwd,2)
 
     return rewards, stacked_frames, agent
 
 def observe(agent, N=15):
-    [play_episode(agent, -1, viz=True) for ep in range(N)]
+    [play_episode(agent, 0.1, viz=True) for ep in range(N)]
 
 def plot_running_avg(reward_arr):
     N = len(reward_arr)
@@ -313,12 +300,13 @@ def play_random(viz=False):
     return total_reward
 
 def save_agent(A):
-    with open('Agent_LunarLander_strDQN.pkl', 'wb') as writer:
+    with open('Agent_LunarLander_strDQN_SVM-Clipped_ExpectedReward.pkl', 'wb') as writer:
         pickle.dump(A, writer, protocol=pickle.HIGHEST_PROTOCOL)
         
 def load_agent(filename):
     with open(filename, 'rb') as reader:
-        unserialized_data = pickle.load(reader)
+        return pickle.load(reader)
+        
 
 
 '''
@@ -326,28 +314,32 @@ def load_agent(filename):
           Improve congvergance by solving subproblems with reward function
                                   picking a good set of range values for bins
 
-    Highest Running Avg for StringDQN: -116 (but observe(A) showed basically solved)
+    Highest Running Avg for StringDQN: -74 after 1E6 episodes
     
     TODO:
     Store transition in memory lookup with state visit frequency and priority
     Every 2000 training steps:
        delete from memory all states with low visit freq and priority
-    With memory at a more efficient size, train DNN on states<&>actions
+       estimate future visits of this state with SVM predictions
+    With memory at a more efficient size, train DNN on transitions
     Update all actions with predictions from the DNN
     Continue Q-Learning with the new policy
     repeat
 
-    
+    REQUIRE: https://arxiv.org/abs/1710.02298
+        MultiStep future reward
+        Proritized experience replay
 '''
 env = gym.make('LunarLander-v2')
 #env = gym.make('CartPole-v0')
 observe_training = False
-EPSILON_MIN = 0.2
+EPSILON_MIN = 0.1
 NUM_BINS = 8#must be even#
-ALPHA = 0.01
+ALPHA = .5#depreciated
 GAMMA = 0.9
 
-EPOCHS = 100
+REPLACE_ITER=1000000
+EPOCHS = 10000
 
 obs_space = 8
 action_space = env.action_space.n

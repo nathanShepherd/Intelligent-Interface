@@ -226,7 +226,7 @@ if __name__ == "__main__":
 
     plt.title("Average Reward with Q-Learning By Episode (CartPole)")
     plot_running_avg(episode_rewards)
-    plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
+    #plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
 
     plt.xlabel('Training Time (episodes)', fontsize=18)
     plt.ylabel('Average Reward per Episode', fontsize=16)

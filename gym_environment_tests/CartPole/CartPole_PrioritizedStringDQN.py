@@ -6,9 +6,9 @@
 # @ https://github.com/MachineLearningLab-AI/OpenAI-Cartpole
 
 import gym
-import pickle
 import random
 import numpy as np
+from functools import reduce
 import matplotlib.pyplot as plt
 
 def max_dict(d):
@@ -28,6 +28,10 @@ class DQN:
         
         self.bins = self.get_bins(num_bins)
         self.init_Q_matrix(observation)
+
+        self.sample_frequency = SAMPLE_FREQUENCY
+        self.batch_size = BATCH_SIZE
+        self.train_iters= 0
 
     def init_Q_matrix(self, obs):
         assert(len(obs)==self.obs_space)
@@ -52,30 +56,50 @@ class DQN:
         self.find(string_state)
         return max_dict( self.Q[string_state] )[1]
 
-    def update_policy(self, state, state_next, action, reward, done=False):
+    def update_policy(self, state, state_next, action, reward):
         state_value = self.evaluate_utility(state)
         
         action = self.get_action(state)
         reward_next = self.evaluate_utility(state_next)
 
-        state_value += ALPHA(reward + GAMMA * reward_next - state_value)
-
+        state_value += ALPHA*(reward + GAMMA * reward_next - state_value)
 
         state = ''.join(str(int(elem)) for elem in self.digitize(state))
         self.Q[state][action] = state_value
 
+        self.train_iters += 1
+        transition_depth = 3
+        #store transition trans_depth*(s, s_n, a, r, done) in memory
+        #  call update_policy recursively on random sample
+        
+        # Partial Implimentation of RainbowDQN
+        # @ https://arxiv.org/pdf/1710.02298.pdf
+        if self.train_iters == self.update_frequency:
+            #sample from memory self.batch_size
+            #We construct the target distribution by
+            #contracting the value distribution in St+n according to the
+            #cumulative discount, and shifting it by the truncated n-step
+            #discounted return
+            pass
+            #update priorites
+            # proportionally to high diff in expected reward
+            # abs(ExpectedValue(state) - Actual_Val(state))
+            
+            #update values in transition
+            
+        
+        
+
     def get_bins(self, num_bins):
         # Make 10 x state_depth matrix,  each column elem is range/10
-        # Digitize using bins ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ 
+        # Digitize using bins ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # obs[0]--> max: 0.265506 | min: -0.149958 | std: 0.151244
+        # obs[1]--> max: 0.045574 | min: -0.036371 | std: 0.032354
+        # obs[2]--> max: 0.241036 | min: -0.336625 | std: 0.205835
+        # obs[3]--> max: 0.046279 | min: -0.051943 | std: 0.039247        
+        
         bins = []
-        ranges = [5,#~3, obs[0] == pos_x
-                  10,#~5, obs[1] == pos_y
-                  3,#~3, obs[2] == vel_x
-                  3,#~5, obs[3] == vel_y
-                  2,#~2, obs[4] == angle
-                  1,#~2, obs[5] == angular_vel
-                  1,#~1, obs[6] == 1 if lhs_leg_contact else 0        
-                  1]#~1, obs[7] == 1 if rhs_leg_contact else 0
+        ranges = [4.8, 5, 0.418, 5]
         for i in range(self.obs_space):
             # use minimum value to anchor buckets
             start, stop = -ranges[i], ranges[i]
@@ -119,22 +143,15 @@ def play_episode(agent, act_space, epsilon=.2, viz=False):
         total_reward += reward
         
         if terminal:
-            if  num_frames < 50:
-                reward += 50
-
-            # lander angular vel and pos controlled
-            if abs(state[4]) < 0.1:
-               if abs(state[5]) < 0.1:
-                   reward += 50
-
-            # ended with control low vertical vel
-            if state[3] > 0 and state[3] < 1:
-                reward += 10
+            #if num_frames > 150:
+            #    reward += np.log(num_frames)
+        
+            if  num_frames < 200:
+                reward = -300
 
         action_next = agent.get_action(state_next)
         
-        agent.update_policy(state, state_next, action,
-                            reward, done=terminal)
+        agent.update_policy(state, state_next, action, reward)
               
         state = state_next
         num_frames += 1
@@ -146,32 +163,26 @@ def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
     if not agent: agent = DQN(obs_space, NUM_BINS, act_space, env.reset())
 
     stacked_frames = []
-    rewards = [0]; avg_rwd = 0
-    dr_dt = 0#reward derivitive with respect to time
-    for ep in range(1, epochs):
+    #TODO: Plot reward averages
+    rewards = [0]
+    for ep in range(epochs):
         epsilon = max(EPSILON_MIN, np.tanh(-ep/(epochs/2))+ 1)
-                      
 
         ep_reward, num_frames = play_episode(agent, act_space, epsilon, viz=obs)
         if ep % 100 == 0:
-            avg_rwd = round(np.mean(rewards),3)
-            dr_dt = round(abs(dr_dt) - abs(avg_rwd), 2)
             print("Ep: {} | {}".format(ep, epochs),
                   "%:", round(ep*100/epochs, 2),
-                  "Eps:", round(epsilon, 2),
-                  "Avg rwd:", round(avg_rwd , 2),
-                  "Ep rwd:", int(ep_reward),
-                  "dr_dt:", dr_dt)
+                  "Epsilon:", round(epsilon, 4),
+                  "Avg rwd:", round(np.mean(rewards),3),
+                  "Ep rwd:", round(ep_reward, 3))
 
         stacked_frames.append(num_frames)
         rewards.append(ep_reward)
-        dr_dt = round(avg_rwd,2)
-
 
     return rewards, stacked_frames, agent
 
 def observe(agent, N=15):
-    [play_episode(agent, EPSILON_MIN, viz=True) for ep in range(N)]
+    [play_episode(agent, -1, viz=True) for ep in range(N)]
 
 def plot_running_avg(reward_arr):
     N = len(reward_arr)
@@ -200,65 +211,47 @@ def play_random(viz=False):
         
     return total_reward
 
-def save_agent(A):
-    with open('Agent_LunarLander_strDQN.pkl', 'wb') as writer:
-        pickle.dump(A, writer, protocol=pickle.HIGHEST_PROTOCOL)
-        
-def load_agent(filename):
-    with open(filename, 'rb') as reader:
-        unserialized_data = pickle.load(reader)
-
-
-'''
-    Note: String DQN is extremely sensitive to internal parameters
-          Improve congvergance by solving subproblems with reward function
-                                  picking a good set of range values for bins
-
-    Highest Running Avg for StringDQN: -116 (but observe(A) showed basically solved)
-    
-    TODO:
-    Store transition in memory lookup with state visit frequency and priority
-    Every 2000 training steps:
-       delete from memory all states with low visit freq and priority
-    With memory at a more efficient size, train DNN on states<&>actions
-    Update all actions with predictions from the DNN
-    Continue Q-Learning with the new policy
-    repeat
-
-    
-'''
-env = gym.make('LunarLander-v2')
+gym.envs.register(
+    id='CartPoleExtraLong-v0',
+    entry_point='gym.envs.classic_control:CartPoleEnv',
+    max_episode_steps=250,
+    reward_threshold=-110.0,
+)
+env = gym.make('CartPoleExtraLong-v0')
 #env = gym.make('CartPole-v0')
 observe_training = False
 EPSILON_MIN = 0.1
-NUM_BINS = 8#must be even#
-ALPHA = np.tanh
+NUM_BINS = 10
+ALPHA = 0.01
 GAMMA = 0.9
 
-EPOCHS = 2000
+SAMPLE_FREQUENCY = 500
+BATCH_SIZE = 100
+'''
+    TODO: Fix the Q matrix s.t. it creates the necissary bins
+          Try concatinating bin indecies as string to correlate states
+'''
 
-obs_space = 8
+EPOCHS = 100
+
+obs_space = 4
 action_space = env.action_space.n
 
 if __name__ == "__main__":
-    episode_rewards, num_frames, Agent = train(obs_space, act_space=action_space,
+    episode_rewards, _, Agent = train(obs_space, act_space=action_space,
                                       epochs = EPOCHS, obs = observe_training)
-    print("Completed Training")
-    random_rwds = []
-    for ep in range(EPOCHS):
-        pass# The upper bound on random LunarLander is 0
-        #random_rwds.append(play_random())
+    
+    random_rwds = [play_random() for ep in range(EPOCHS)]
 
-    plt.title("Average Reward with Q-Learning By Episode (LunarLander)")
+    plt.title("Average Reward with Q-Learning By Episode (CartPole)")
     plot_running_avg(episode_rewards)
-    plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
+    #plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
 
     plt.xlabel('Training Time (episodes)', fontsize=18)
     plt.ylabel('Average Reward per Episode', fontsize=16)
     plt.legend()
     plt.show()
 
-    recent_agent = 'Agent_LunarLander_strDQN.pkl'
 
 
 
