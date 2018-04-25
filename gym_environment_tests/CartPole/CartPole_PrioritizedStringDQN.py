@@ -1,9 +1,8 @@
 # Categorize Continuous State Space using Binning
 # Aggregate reward in Q-Matrix using dictionary
-# \\ \\ \\ \\
+# \\ \\ \\ \\ \\ \\ \\ \\
 # Developed by Nathan Shepherd
-# Inspired by Phil Tabor
-# @ https://github.com/MachineLearningLab-AI/OpenAI-Cartpole
+
 
 import gym
 import random
@@ -28,9 +27,14 @@ class DQN:
         
         self.bins = self.get_bins(num_bins)
         self.init_Q_matrix(observation)
-
+        self.transition_cache = []
+        self.prior_heap = {}
+        
+        self.memory = {}#story transitions in BST
+        
         self.sample_frequency = SAMPLE_FREQUENCY
         self.batch_size = BATCH_SIZE
+        self.transition_depth = TRANSITION_DEPTH
         self.train_iters= 0
 
     def init_Q_matrix(self, obs):
@@ -61,33 +65,84 @@ class DQN:
         
         action = self.get_action(state)
         reward_next = self.evaluate_utility(state_next)
-
         state_value += ALPHA*(reward + GAMMA * reward_next - state_value)
 
         state = ''.join(str(int(elem)) for elem in self.digitize(state))
+        expected_state_value = self.Q[state][action]
         self.Q[state][action] = state_value
 
-        self.train_iters += 1
-        transition_depth = 3
-        #store transition trans_depth*(s, s_n, a, r, done) in memory
-        #  call update_policy recursively on random sample
-        
+        #store transition trans_depth*(s, r, E(r), a, s_n) in memory
+        t = [state, state_value, expected_state_value, action, state_next]
+        self.transition_cache.append(t)
+        if len(self.transition_cache) == self.transition_depth:
+            priority = 1# assume highest initial priority of new states
+            key = id(self.transition_cache)# avoiding repeats of exact sequence
+            if key not in self.memory:
+                self.memory[key] = self.transition_cache
+                self.prior_heap[key] = priority
+            
+            self.transition_cache = []
+
+        self.prioritized_replay()
+
+    def prioritized_replay(self):
         # Partial Implimentation of RainbowDQN
         # @ https://arxiv.org/pdf/1710.02298.pdf
-        if self.train_iters == self.update_frequency:
-            #sample from memory self.batch_size
-            #We construct the target distribution by
-            #contracting the value distribution in St+n according to the
-            #cumulative discount, and shifting it by the truncated n-step
-            #discounted return
-            pass
+        #We construct the target distribution by
+        #contracting the value distribution in St+n according to the
+        #cumulative discount, and shifting it by the truncated n-step
+        #discounted return
+        self.train_iters += 1
+        done = False
+        
+        if self.train_iters % self.sample_frequency == 0 and not done:
+            # sample from memory self.batch_size
+            # TODO: ACCORDING TO PRIORITY (self.prior_heap[key])
+            keys = random.sample(list(self.memory), self.batch_size)
+            #print(self.memory[keys[0]], self.transition_depth)
+            assert(len(self.memory[keys[0]]) == self.transition_depth)
+
+            #update values in Q function
+            transitions = []
+            for key in keys:
+                transitions.append([self.memory[key], self.prior_heap[key]])
+            transitions = sorted(transitions, key=lambda t:t[1])
+            transitions = [trans[:-2] for trans in transitions]
+            #[print(trans[1]) for trans in transitions]
+            for i, trans in enumerate(transitions):
+                #print(len(trans))
+                for ep in trans:
+                    if type(ep[1]) == list:
+                        print("Recusive list ERROR")
+                        break
+                    while i > 0:
+                        i -= 0.5
+                        #[print(p) for p in ep]
+                        self.update_policy(ep[0], ep[4], ep[3], ep[1])
+                    
             #update priorites
             # proportionally to high diff in expected reward
             # abs(ExpectedValue(state) - Actual_Val(state))
+            dead_keys = []
+            for key in keys:
+                total = 0
+                #print(len(self.memory[key]))
+                #print(self.memory[key])
+                for trans in self.memory[key]:
+                    #trans = state, state_value, expected_state_value, action, state_next
+                    #print(trans[2]);
+                    #print(trans[1], end="\n\n")
+                    diff = abs(trans[2] - trans[1])
+                    total += diff
+
+                priority = np.sin( np.tanh( (np.pi*total) / 2 ) )
+                self.prior_heap[key] = priority
+                
+            done = True
             
-            #update values in transition
             
-        
+            
+    
         
 
     def get_bins(self, num_bins):
@@ -225,14 +280,17 @@ NUM_BINS = 10
 ALPHA = 0.01
 GAMMA = 0.9
 
-SAMPLE_FREQUENCY = 500
+#Sample from DQN Memory
+#Using Prior. Exp. Replay
+SAMPLE_FREQUENCY = 500#500
+TRANSITION_DEPTH = 5
 BATCH_SIZE = 100
 '''
     TODO: Fix the Q matrix s.t. it creates the necissary bins
           Try concatinating bin indecies as string to correlate states
 '''
 
-EPOCHS = 100
+EPOCHS = 2000
 
 obs_space = 4
 action_space = env.action_space.n
