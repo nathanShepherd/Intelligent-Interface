@@ -5,9 +5,9 @@
 
 
 import gym
+import pickle
 import random
 import numpy as np
-from functools import reduce
 import matplotlib.pyplot as plt
 
 def max_dict(d):
@@ -286,11 +286,10 @@ SAMPLE_FREQUENCY = 500#500
 TRANSITION_DEPTH = 5
 BATCH_SIZE = 100
 '''
-    TODO: Fix the Q matrix s.t. it creates the necissary bins
-          Try concatinating bin indecies as string to correlate states
+          Concatinating bin indecies as string to correlate states
 '''
 
-EPOCHS = 2000
+EPOCHS = 10000
 
 obs_space = 4
 action_space = env.action_space.n
@@ -303,7 +302,7 @@ if __name__ == "__main__":
 
     plt.title("Average Reward with Q-Learning By Episode (CartPole)")
     plot_running_avg(episode_rewards)
-    #plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
+    plt.plot(random_rwds, color="gray", label="Random Moves Running Average")
 
     plt.xlabel('Training Time (episodes)', fontsize=18)
     plt.ylabel('Average Reward per Episode', fontsize=16)

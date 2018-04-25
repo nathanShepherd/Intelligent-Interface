@@ -1,14 +1,13 @@
 # Categorize Continuous State Space using Binning
 # Aggregate reward in Q-Matrix using dictionary
-# \\ \\ \\ \\
+# \\ \\ \\ \\ \\ \\ \\ \\
 # Developed by Nathan Shepherd
-# Inspired by Phil Tabor
-# @ https://github.com/MachineLearningLab-AI/OpenAI-Cartpole
+
 
 import gym
-import pickle
 import random
 import numpy as np
+from functools import reduce
 import matplotlib.pyplot as plt
 
 def max_dict(d):
@@ -28,6 +27,16 @@ class DQN:
         
         self.bins = self.get_bins(num_bins)
         self.init_Q_matrix(observation)
+        
+        # Datastructs for DDQN and Prioritized Experience Replay
+        self.transition_cache = []
+        self.prior_heap = {}
+        self.memory = {}
+        
+        self.sample_frequency = SAMPLE_FREQUENCY
+        self.batch_size = BATCH_SIZE
+        self.transition_depth = TRANSITION_DEPTH
+        self.train_iters= 0
 
     def init_Q_matrix(self, obs):
         assert(len(obs)==self.obs_space)
@@ -57,12 +66,79 @@ class DQN:
         
         action = self.get_action(state)
         reward_next = self.evaluate_utility(state_next)
-
         state_value += ALPHA(reward + GAMMA * reward_next - state_value)
 
-
         state = ''.join(str(int(elem)) for elem in self.digitize(state))
+        expected_state_value = self.Q[state][action]
         self.Q[state][action] = state_value
+
+        #store transition trans_depth*(s, r, E(r), a, s_n) in memory
+        t = [state, state_value, expected_state_value, action, state_next]
+        self.transition_cache.append(t)
+        if len(self.transition_cache) == self.transition_depth:
+            priority = 1# assume highest initial priority of new states
+            key = id(self.transition_cache)# avoiding repeats of exact sequence
+            if key not in self.memory:
+                self.memory[key] = self.transition_cache
+                self.prior_heap[key] = priority
+            
+            self.transition_cache = []
+
+        self.prioritized_replay()
+
+    def prioritized_replay(self):
+        # Partial Implimentation of RainbowDQN
+        # @ https://arxiv.org/pdf/1710.02298.pdf
+        #We construct the target distribution by
+        #contracting the value distribution in St+n according to the
+        #cumulative discount, and shifting it by the truncated n-step
+        #discounted return
+        self.train_iters += 1
+        done = False
+        
+        if self.train_iters % self.sample_frequency == 0 and not done:
+            # sample from memory self.batch_size
+            # TODO: ACCORDING TO PRIORITY (self.prior_heap[key])
+            keys = random.sample(list(self.memory), self.batch_size)
+            #print(self.memory[keys[0]], self.transition_depth)
+            assert(len(self.memory[keys[0]]) == self.transition_depth)
+
+            #update values in Q function
+            transitions = []
+            for key in keys:
+                transitions.append([self.memory[key], self.prior_heap[key]])
+            transitions = sorted(transitions, key=lambda t:t[1])
+            transitions = [trans[:-2] for trans in transitions]
+            #[print(trans[1]) for trans in transitions]
+            for i, trans in enumerate(transitions):
+                #print(len(trans))
+                for ep in trans:
+                    if type(ep[1]) == list:
+                        print("Recusive list ERROR");break
+                    while i > 0:
+                        i -= 0.5
+                        #[print(p) for p in ep]
+                        self.update_policy(ep[0], ep[4], ep[3], ep[1])
+                    
+            # Update priorites ~~~~~~~~~~~~~~~~~~~~~~~~~
+            # proportionally to high diff in expected reward
+            # prior = abs(ExpectedValue(state) - Actual_Val(state))
+            for key in keys:
+                total = 0
+                #print(len(self.memory[key]))
+                #print(self.memory[key])
+                for trans in self.memory[key]:
+                    #trans = state, state_value, expected_state_value, action, state_next
+                    #print(trans[2]);
+                    #print(trans[1], end="\n\n")
+                    diff = abs(trans[2] - trans[1])
+                    total += diff
+
+                priority = np.sin( np.tanh( (np.pi*total) / 2 ) )
+                self.prior_heap[key] = priority
+                
+            done = True
+            
 
     def get_bins(self, num_bins):
         # Make 10 x state_depth matrix,  each column elem is range/10
@@ -81,7 +157,7 @@ class DQN:
             start, stop = -ranges[i], ranges[i]
             buckets = np.linspace(start, stop, num_bins)
             bins.append(buckets)
-        return bins         
+        return bins      
             
     def digitize(self, arr):
         # distrubute each elem in state to the index of the closest bin
@@ -148,7 +224,7 @@ def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
     rewards = [0]; avg_rwd = 0
     dr_dt = 0#reward derivitive with respect to time
     for ep in range(1, epochs):
-        epsilon = max(EPSILON_MIN, np.tanh(-ep/(min(epochs, 2000)/2))+ 1)
+        epsilon = max(EPSILON_MIN, np.tanh(-ep/(epochs/2))+ 1)
                       
 
         ep_reward, num_frames = play_episode(agent, act_space, epsilon, viz=obs)
@@ -164,13 +240,12 @@ def train(obs_space, act_space=None,epochs=2000, obs=False, agent=False):
 
         stacked_frames.append(num_frames)
         rewards.append(ep_reward)
-        dr_dt = round(avg_rwd,2)
-
+        dr_dt = round(avg_rwd,2) 
 
     return rewards, stacked_frames, agent
 
 def observe(agent, N=15):
-    [play_episode(agent, EPSILON_MIN, viz=True) for ep in range(N)]
+    [play_episode(agent, -1, viz=True) for ep in range(N)]
 
 def plot_running_avg(reward_arr):
     N = len(reward_arr)
@@ -233,15 +308,21 @@ NUM_BINS = 8#must be even#
 ALPHA = np.tanh
 GAMMA = 0.9
 
-EPOCHS = 10000
+#Sample from DQN Memory
+#Using Prior. Exp. Replay
+SAMPLE_FREQUENCY = 500#500
+TRANSITION_DEPTH = 5
+BATCH_SIZE = 100
+
+EPOCHS = 2000
 
 obs_space = 8
 action_space = env.action_space.n
 
 if __name__ == "__main__":
-    episode_rewards, num_frames, Agent = train(obs_space, act_space=action_space,
+    episode_rewards, _, Agent = train(obs_space, act_space=action_space,
                                       epochs = EPOCHS, obs = observe_training)
-    print("Completed Training")
+    
     random_rwds = []
     for ep in range(EPOCHS):
         pass# The upper bound on random LunarLander is 0
@@ -256,7 +337,6 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    recent_agent = 'Agent_LunarLander_strDQN.pkl'
 
 
 
