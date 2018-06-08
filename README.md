@@ -1,5 +1,5 @@
 # Intelligent Human-Computer interface. 
-This RL agent is detailed extensively in the accompanied [Research Paper](https://docs.google.com/document/d/1aNBuz6AemphvAmFaWkQFWymGF39TojJe29UIhg6q1pc/edit?usp=sharing).
+This repository is detailed extensively in the accompanied [Research Paper](https://docs.google.com/document/d/1aNBuz6AemphvAmFaWkQFWymGF39TojJe29UIhg6q1pc/edit?usp=sharing).
 
 ### How to Navigate this Repository
 #### **_CustomDQN_**
