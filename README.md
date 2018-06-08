@@ -2,11 +2,20 @@
 This RL agent is detailed extensively in the accompanied research paper to be published April 2018.
 
 ### How to Navigate this Repository
-**_CustomDQN_** is the current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
+#### **_CustomDQN_**
+The current version of the Deep Q-Learning Network implimentation. It provides a convience wrapper for training an agent in any enviornment.
 
-**_future_models_** are RL models still in production that have no guarantee of their effectiveness.
+#### **gym_environment_tests
+DQN algorithm applied to games from the popular benchmark Gym from OpenAI.
 
-**_code_references_** are code samples found elsewhere on github, they may be used as a reference when updating files in _future_models_
+#### **saved_scores**
+Visualizations of various model performance on different tasks.
+
+#### **_future_models_** 
+RL models still in production that have no guarantee of their effectiveness.
+
+#### **_code_references_**
+Code samples found elsewhere on github, they may be used as a reference when updating files in _future_models_
 
 ### How to get started
 #### Install Python
@@ -42,6 +51,3 @@ python gym_environment_tests/LunarLander/lunarLander-CustomDQN.py
 - Use a CRF or RNN/LSTM to help estimate the Q-Function relative to the current point in time
 
 - Augment memory for [_efficient_ and _prioritized_](https://arxiv.org/abs/1511.05952) experience replay
-
-- [Debugg DQN](https://jaromiru.com/2016/10/12/lets-make-a-dqn-debugging/)
- and impliment [Double Q-Learning](https://arxiv.org/abs/1509.06461)
